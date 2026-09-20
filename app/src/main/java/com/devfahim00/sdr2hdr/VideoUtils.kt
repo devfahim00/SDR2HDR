@@ -10,7 +10,11 @@ data class VideoMeta(
     val frames: Int?,
     val fps: Double?,
     val durationSec: Double?,
-    val isHdr: Boolean
+    val isHdr: Boolean,
+    val colorSpace: String? = null,
+    val colorPrimaries: String? = null,
+    val colorTransfer: String? = null,
+    val colorRange: String? = null
 )
 
 object VideoUtils {
@@ -22,7 +26,8 @@ object VideoUtils {
 
     fun isExcluded(name: String): Boolean {
         val n = name.lowercase(Locale.US)
-        return n.startsWith("trashed-") || n.startsWith("output_hdr10")
+        // hidden / trashed files (".trashed-123-x.mp4", ".pending-...") and our own outputs
+        return n.startsWith(".") || n.startsWith("trashed-") || n.startsWith("output_hdr10")
     }
 
     fun classifyQuality(w: Int, h: Int): String {
@@ -47,7 +52,11 @@ object VideoUtils {
     fun formatDuration(sec: Double?): String {
         if (sec == null || sec <= 0) return "N/A"
         val total = sec.toInt()
-        return String.format(Locale.US, "%02d:%02d", total / 60, total % 60)
+        return if (total >= 3600) {
+            String.format(Locale.US, "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
+        } else {
+            String.format(Locale.US, "%02d:%02d", total / 60, total % 60)
+        }
     }
 
     fun formatSize(bytes: Long): String =
@@ -60,7 +69,7 @@ object VideoUtils {
     fun probeVideo(path: String): VideoMeta? {
         return try {
             val cmd = "-v error -select_streams v:0 " +
-                "-show_entries stream=width,height,nb_frames,r_frame_rate,color_transfer,color_primaries,color_space " +
+                "-show_entries stream=width,height,nb_frames,r_frame_rate,color_transfer,color_primaries,color_space,color_range " +
                 "-show_entries format=duration " +
                 "-of default=noprint_wrappers=1 \"$path\""
             val session = FFprobeKit.execute(cmd) ?: return null
@@ -84,7 +93,15 @@ object VideoUtils {
                 v.contains("smpte2084", ignoreCase = true) ||
                     v.contains("arib-std-b67", ignoreCase = true)
             }
-            VideoMeta(w, h, frames, fps, duration, hdr)
+            fun tag(key: String): String? =
+                map[key]?.takeIf { it.isNotEmpty() && it != "N/A" && it != "unknown" }
+            VideoMeta(
+                w, h, frames, fps, duration, hdr,
+                colorSpace = tag("color_space"),
+                colorPrimaries = tag("color_primaries"),
+                colorTransfer = tag("color_transfer"),
+                colorRange = tag("color_range")
+            )
         } catch (e: Exception) {
             null
         }

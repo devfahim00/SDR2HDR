@@ -1,6 +1,11 @@
 package com.devfahim00.sdr2hdr
 
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Intent
 import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
@@ -9,8 +14,8 @@ import android.os.PowerManager
 import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.antonkarpenko.ffmpegkit.FFmpegKit
 import com.antonkarpenko.ffmpegkit.FFmpegSession
 import com.antonkarpenko.ffmpegkit.FFmpegSessionCompleteCallback
@@ -18,12 +23,26 @@ import com.antonkarpenko.ffmpegkit.LogCallback
 import com.antonkarpenko.ffmpegkit.ReturnCode
 import com.antonkarpenko.ffmpegkit.Statistics
 import com.antonkarpenko.ffmpegkit.StatisticsCallback
+import com.bumptech.glide.Glide
 import com.devfahim00.sdr2hdr.databinding.ActivityConvertBinding
+import com.devfahim00.sdr2hdr.databinding.ItemKvBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
 
 class ConvertActivity : AppCompatActivity() {
+
+    private class Params(
+        val input: String,
+        val output: String,
+        val exposure: String,
+        val highlight: String,
+        val saturation: String,
+        val preset: String,
+        val platform: String,
+        val strip: Boolean
+    )
 
     private lateinit var binding: ActivityConvertBinding
     private val main = Handler(Looper.getMainLooper())
@@ -34,8 +53,14 @@ class ConvertActivity : AppCompatActivity() {
     private var durationSec = 0.0
     private var totalFrames = 0L
     private var outFile: File? = null
+    private var outUri: Uri? = null
     private var stopRequested = false
     private var started = false
+
+    private var params: Params? = null
+    private var inputMeta: VideoMeta? = null
+    private var retried = false
+    private var lastLogs = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,17 +102,29 @@ class ConvertActivity : AppCompatActivity() {
             count++
         }
         outFile = out
+        params = Params(
+            inputPath, out.absolutePath, exposure, highlight, saturation, preset, platform, strip
+        )
 
-        binding.textSummary.text = buildString {
-            append("Selected : ").append(input.name).append('\n')
-            append("Output   : ").append(out.name).append('\n')
-            append("Target   : ").append(platform)
-            append("  |  Meta: ").append(if (strip) "Stripped" else "Preserved").append('\n')
-            append("Grading  : Exp: ").append(exposure)
-            append(" | High: ").append(highlight).append("nits")
-            append(" | Sat: ").append(saturation).append('\n')
-            append("Preset   : ").append(preset)
-        }
+        Glide.with(binding.imageThumb)
+            .load(input)
+            .frame(1_000_000L)
+            .centerCrop()
+            .into(binding.imageThumb)
+        binding.textSourceName.text = input.name
+
+        addKv("Output", out.name)
+        addKv(
+            "Target",
+            when (platform) {
+                "tiktok" -> "TikTok"
+                "instagram" -> "Instagram"
+                else -> "None"
+            }
+        )
+        addKv("Metadata", if (strip) "Stripped" else "Preserved")
+        addKv("Grading", "Exp $exposure  ·  High ${highlight}nits  ·  Sat $saturation")
+        addKv("Preset", preset)
 
         binding.btnStop.setOnClickListener {
             if (sessionId >= 0 && !stopRequested) {
@@ -96,6 +133,13 @@ class ConvertActivity : AppCompatActivity() {
                 binding.textStatus.text = "Stopping..."
                 FFmpegKit.cancel(sessionId)
             }
+        }
+        binding.btnDone.setOnClickListener { finish() }
+        binding.btnPlay.setOnClickListener { playResult() }
+        binding.btnCopyLog.setOnClickListener {
+            val cm = getSystemService(ClipboardManager::class.java)
+            cm?.setPrimaryClip(ClipData.newPlainText("SDR2HDR log", lastLogs))
+            Toast.makeText(this, "Log copied", Toast.LENGTH_SHORT).show()
         }
 
         binding.textStatus.text = "Analyzing input..."
@@ -110,7 +154,7 @@ class ConvertActivity : AppCompatActivity() {
                     }
                     meta.isHdr -> {
                         binding.textStatus.text = "Skipped"
-                        AlertDialog.Builder(this)
+                        MaterialAlertDialogBuilder(this)
                             .setTitle("Already HDR")
                             .setMessage("Input video is already HDR. Skipping conversion.")
                             .setPositiveButton("OK") { d, _ ->
@@ -121,6 +165,7 @@ class ConvertActivity : AppCompatActivity() {
                             .show()
                     }
                     else -> {
+                        inputMeta = meta
                         durationSec = meta.durationSec ?: 0.0
                         totalFrames = when (platform) {
                             "tiktok" -> (durationSec * 60).toLong()
@@ -128,32 +173,35 @@ class ConvertActivity : AppCompatActivity() {
                             else -> meta.frames?.toLong()
                                 ?: (durationSec * (meta.fps ?: 0.0)).toLong()
                         }
-                        startEncode(
-                            inputPath, out.absolutePath,
-                            exposure, highlight, saturation,
-                            preset, platform, strip
+                        val src = SourceColor.from(meta)
+                        addKv(
+                            "Source",
+                            "${src.matrix}  ·  ${if (src.fullRange) "full" else "limited"} range"
                         )
+                        startEncode(src)
                     }
                 }
             }
         }
     }
 
-    private fun startEncode(
-        input: String,
-        output: String,
-        exposure: String,
-        highlight: String,
-        saturation: String,
-        preset: String,
-        platform: String,
-        stripMeta: Boolean
-    ) {
+    private fun addKv(key: String, value: String) {
+        val row = ItemKvBinding.inflate(layoutInflater, binding.containerSummary, false)
+        row.textKey.text = key
+        row.textValue.text = value
+        binding.containerSummary.addView(row.root)
+    }
+
+    private fun startEncode(source: SourceColor) {
+        val p = params ?: return
         started = true
+        stopRequested = false
+        binding.btnStop.isEnabled = true
         acquireWake()
         binding.textStatus.text = "Encoding..."
         val command = FfmpegEngine.buildCommand(
-            input, output, exposure, highlight, saturation, preset, platform, stripMeta
+            p.input, p.output, p.exposure, p.highlight, p.saturation,
+            p.preset, p.platform, p.strip, source
         )
         val session = FFmpegKit.executeAsync(
             command,
@@ -170,7 +218,8 @@ class ConvertActivity : AppCompatActivity() {
         var pct = if (durationSec > 0) (processedSec / durationSec * 100).toInt() else 0
         if (pct < 0) pct = 0
         if (pct > 100) pct = 100
-        binding.progressBar.progress = pct
+        binding.progressBar.setProgressCompat(pct, true)
+        binding.textPercent.text = "$pct%"
 
         val frames = st.videoFrameNumber.toLong()
         val fps = st.videoFps.toDouble()
@@ -187,48 +236,121 @@ class ConvertActivity : AppCompatActivity() {
         } else {
             "--:--"
         }
-        binding.textStatus.text = String.format(
-            Locale.US,
-            "%d%%  |  %d/%d frames  |  %.1f fps  |  ETA %s",
-            pct, frames, totalFrames, fps, etaStr
-        )
+        binding.textStatus.text = "Encoding..."
+        binding.textFrames.text =
+            if (totalFrames > 0) "$frames / $totalFrames" else frames.toString()
+        binding.textFps.text = String.format(Locale.US, "%.1f fps", fps)
+        binding.textEta.text = etaStr
     }
 
     private fun onFinished(session: FFmpegSession) {
         if (isFinishing || isDestroyed) return
+        val rc = session.returnCode
+        val logs = session.allLogsAsString ?: ""
+
+        val failed = !ReturnCode.isSuccess(rc) && !ReturnCode.isCancel(rc) && !stopRequested
+
+        // A zscale colour-space failure with the probed profile: retry once with a plain
+        // BT.709 profile before giving up.
+        if (failed && !retried && isColorError(logs) &&
+            SourceColor.from(inputMeta) != SourceColor.BT709
+        ) {
+            retried = true
+            outFile?.delete()
+            binding.textStatus.text = "Retrying with safe colour profile..."
+            startEncode(SourceColor.BT709)
+            return
+        }
+
         started = false
         releaseWake()
         binding.btnStop.isEnabled = false
-        val rc = session.returnCode
+        binding.btnStop.visibility = View.GONE
+        binding.btnDone.visibility = View.VISIBLE
+
         when {
             ReturnCode.isSuccess(rc) -> {
-                binding.progressBar.progress = 100
+                binding.progressBar.setProgressCompat(100, true)
+                binding.textPercent.text = "100%"
                 binding.textStatus.text = "Complete"
                 outFile?.let {
                     MediaScannerConnection.scanFile(
-                        this, arrayOf(it.absolutePath), arrayOf("video/mp4"), null
-                    )
+                        this, arrayOf(it.absolutePath), arrayOf("video/mp4")
+                    ) { _, uri ->
+                        main.post {
+                            if (!isFinishing && !isDestroyed && uri != null) {
+                                outUri = uri
+                                binding.btnPlay.visibility = View.VISIBLE
+                            }
+                        }
+                    }
                 }
-                binding.textResult.visibility = View.VISIBLE
-                binding.textResult.text = "[DONE] Saved to Movies/HDR10_Converted"
+                showResult(
+                    ok = true,
+                    text = "Saved to Movies/HDR10_Converted/${outFile?.name ?: ""}"
+                )
             }
             ReturnCode.isCancel(rc) || stopRequested -> {
                 outFile?.delete()
-                binding.textResult.visibility = View.VISIBLE
-                binding.textResult.text = "[!] Conversion stopped by user"
+                binding.textStatus.text = "Stopped"
+                showResult(ok = false, text = "Conversion stopped by user")
             }
             else -> {
                 outFile?.delete()
-                val logs = session.allLogsAsString ?: ""
-                binding.textStatus.text = "ERROR"
-                binding.textError.visibility = View.VISIBLE
-                binding.textError.text = logs.takeLast(1500)
+                lastLogs = logs.takeLast(1500)
                     .ifEmpty { "FFmpeg exited with code ${rc?.value ?: "unknown"}" }
+                binding.textStatus.text = "ERROR"
+                val summary = if (isColorError(logs)) {
+                    "The colour information of this video could not be processed, even after " +
+                        "retrying with a safe profile. Please copy the log below and report it."
+                } else {
+                    "FFmpeg exited with code ${rc?.value ?: "unknown"}."
+                }
+                showError(summary, lastLogs)
             }
         }
     }
 
+    private fun isColorError(logs: String): Boolean =
+        logs.contains("zscale", ignoreCase = true) ||
+            logs.contains("color family", ignoreCase = true) ||
+            logs.contains("no path between colorspaces", ignoreCase = true)
+
+    private fun showResult(ok: Boolean, text: String) {
+        binding.cardResult.visibility = View.VISIBLE
+        binding.textResult.text = text
+        if (!ok) {
+            binding.iconResult.setImageResource(R.drawable.ic_error)
+            binding.iconResult.setColorFilter(ContextCompat.getColor(this, R.color.yellow))
+            binding.cardResult.setCardBackgroundColor(ContextCompat.getColor(this, R.color.card_bg))
+            binding.cardResult.strokeColor = ContextCompat.getColor(this, R.color.outline)
+        }
+    }
+
+    private fun showError(summary: String, log: String) {
+        lastLogs = log
+        binding.cardError.visibility = View.VISIBLE
+        binding.textErrorSummary.text = summary
+        binding.textError.text = log
+        binding.textError.visibility = if (log.isBlank()) View.GONE else View.VISIBLE
+        binding.btnCopyLog.visibility = if (log.isBlank()) View.GONE else View.VISIBLE
+    }
+
+    private fun playResult() {
+        val uri = outUri ?: return
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(uri, "video/mp4")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            )
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "No video player found", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun acquireWake() {
+        if (wakeLock?.isHeld == true) return
         try {
             val pm = getSystemService(PowerManager::class.java)
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sdr2hdr:convert")
@@ -249,16 +371,16 @@ class ConvertActivity : AppCompatActivity() {
 
     private fun failUi(msg: String) {
         started = false
-        binding.btnStop.isEnabled = false
+        binding.btnStop.visibility = View.GONE
+        binding.btnDone.visibility = View.VISIBLE
         binding.textStatus.text = "ERROR"
-        binding.textError.visibility = View.VISIBLE
-        binding.textError.text = msg
+        showError(msg, "")
     }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (started) {
-            AlertDialog.Builder(this)
+            MaterialAlertDialogBuilder(this)
                 .setTitle("Conversion running")
                 .setMessage("Encoding is in progress. Keep the app open until it finishes. Stop and exit now?")
                 .setPositiveButton("Stop & exit") { _, _ ->

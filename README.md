@@ -8,8 +8,12 @@ same defaults, same output behavior.
 
 ## Features
 
-- Folder browser scanning `DCIM`, `Download`, `Movies`, `Pictures` (depth ≤ 2) + manual path entry
-- Video list with size / quality (SD/HD/FHD/UHD) / frame count / duration metadata, HDR detection
+- **All videos** button: lists every video on the device in one place (MediaStore, with a
+  file-scan fallback), with search and sorting (newest / name / largest / longest)
+- Folder browser scanning `DCIM`, `Download`, `Movies`, `Pictures` (depth ≤ 2) with per-folder
+  video counts + manual path entry
+- Video list with thumbnails, size / quality (SD/HD/FHD/UHD) / frame count / duration, HDR detection
+- Modern Material 3 dark UI (cards, chips, progress stats, result/error cards)
 - Grading settings: **Exposure** (default 0.25), **Highlight / MaxCLL nits** (default 240),
   **Saturation** (default 1.25)
 - Encoder presets: ultrafast / fast (default) / medium / slow (libx265, CRF 20)
@@ -52,6 +56,22 @@ Requires JDK 17 and the Android SDK (compileSdk 34).
    `Movies/HDR10_Converted`)
 3. Pick folder → pick video → adjust grading → start
 4. Keep the app open while encoding; the result appears in `Movies/HDR10_Converted`
+
+## Colour-space handling (zscale error fix)
+
+Many phone videos are untagged or carry an odd colour-matrix tag (e.g. `gbr`). The original
+filter chain let `zscale` guess the source colorimetry, which failed with
+
+```
+code 1026: YUV color family cannot have RGB matrix coefficients
+code 3074: no path between colorspaces
+```
+
+The app now reads `color_space / color_primaries / color_transfer / color_range` with ffprobe and
+passes them to `zscale` explicitly (`min/pin/tin/rin` on input, `m=gbr:p:t` on output). Unknown or
+bogus tags fall back to BT.709 (HD) / BT.601 (SD). For correctly tagged BT.709 sources the output is
+bit-identical to the old chain. If a colour error still happens, the app retries once with a plain
+BT.709 profile before reporting a failure.
 
 ## Differences vs the Termux script
 

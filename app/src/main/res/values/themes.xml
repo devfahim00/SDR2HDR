@@ -3,9 +3,49 @@
     <style name="Theme.SDR2HDR" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/cyan</item>
         <item name="colorOnPrimary">@color/bg_dark</item>
+        <item name="colorPrimaryContainer">@color/primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/cyan_light</item>
+        <item name="colorSecondary">@color/yellow</item>
+        <item name="colorOnSecondary">@color/bg_dark</item>
+        <item name="colorSecondaryContainer">@color/primary_container</item>
+        <item name="colorOnSecondaryContainer">@color/cyan_light</item>
+        <item name="colorTertiary">@color/green</item>
+        <item name="colorError">@color/alert</item>
+        <item name="colorErrorContainer">@color/alert_container</item>
+        <item name="colorOnErrorContainer">@color/alert_light</item>
+        <item name="colorSurface">@color/bg_dark</item>
+        <item name="colorOnSurface">@color/white</item>
+        <item name="colorSurfaceVariant">@color/bg_panel</item>
+        <item name="colorOnSurfaceVariant">@color/gray</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="colorOutlineVariant">@color/outline</item>
         <item name="android:windowBackground">@color/bg_dark</item>
         <item name="android:statusBarColor">@color/bg_dark</item>
         <item name="android:navigationBarColor">@color/bg_dark</item>
         <item name="android:textColorHint">@color/gray</item>
+    </style>
+
+    <!-- Cards -->
+    <style name="Widget.SDR2HDR.Card" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">@color/card_bg</item>
+        <item name="cardCornerRadius">20dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">@color/outline</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="rippleColor">@color/ripple</item>
+    </style>
+
+    <!-- Thumbnails -->
+    <style name="ShapeAppearance.SDR2HDR.Thumb" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <!-- Section title in cards -->
+    <style name="Text.SectionTitle" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">@color/cyan</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.08</item>
     </style>
 </resources>

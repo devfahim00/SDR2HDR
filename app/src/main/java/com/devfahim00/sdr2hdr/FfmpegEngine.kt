@@ -1,8 +1,69 @@
 package com.devfahim00.sdr2hdr
 
 /**
- * Builds the SDR -> HDR10 ffmpeg command. Byte-for-byte parity with the
- * original Termux sdr2hdr.sh filter chain and x265 HDR10 signaling.
+ * Colorimetry of the *source* video, expressed as zscale option values.
+ *
+ * Phone videos are frequently untagged (or tagged with a bogus "gbr" matrix). zscale then
+ * fails with `code 1026: YUV color family cannot have RGB matrix coefficients` or
+ * `code 3074: no path between colorspaces`. Telling zscale explicitly what the source is
+ * removes the dependence on those tags.
+ */
+data class SourceColor(
+    val matrix: String,
+    val primaries: String,
+    val transfer: String,
+    val fullRange: Boolean
+) {
+    companion object {
+        /** Safe default: BT.709 limited range (what virtually all HD phone video is). */
+        val BT709 = SourceColor("bt709", "bt709", "bt709", false)
+
+        /** Build from probed metadata; unknown / bogus tags fall back to sensible defaults. */
+        fun from(meta: VideoMeta?): SourceColor {
+            if (meta == null) return BT709
+
+            // Same heuristic as mpv/ffmpeg: SD => BT.601, everything else => BT.709
+            val hd = meta.width > 1024 || meta.height > 576
+
+            val cs = meta.colorSpace?.lowercase()
+            val matrix = when (cs) {
+                "bt709", "smpte170m", "bt470bg", "bt2020nc" -> cs
+                else -> if (hd) "bt709" else "smpte170m"
+            }
+
+            val pri = meta.colorPrimaries?.lowercase()
+            val primaries = when (pri) {
+                "bt709", "smpte170m", "bt470bg", "bt2020" -> pri
+                else -> when (matrix) {
+                    "bt2020nc" -> "bt2020"
+                    else -> matrix
+                }
+            }
+
+            val trc = meta.colorTransfer?.lowercase()
+            val transfer = when (trc) {
+                "bt709", "smpte170m", "bt470bg", "bt470m", "iec61966-2-1" -> trc
+                "bt2020-10" -> "2020_10"
+                "bt2020-12" -> "2020_12"
+                else -> when (matrix) {
+                    "bt2020nc" -> "2020_10"
+                    "bt709" -> "bt709"
+                    else -> "smpte170m"
+                }
+            }
+
+            val range = meta.colorRange?.lowercase()
+            val full = range == "pc" || range == "full" || range == "jpeg"
+
+            return SourceColor(matrix, primaries, transfer, full)
+        }
+    }
+}
+
+/**
+ * Builds the SDR -> HDR10 ffmpeg command. Same filter chain and x265 HDR10 signaling as the
+ * original Termux sdr2hdr.sh, plus explicit source colorimetry so untagged / oddly tagged
+ * phone videos convert instead of failing inside zscale.
  */
 object FfmpegEngine {
 
@@ -14,14 +75,25 @@ object FfmpegEngine {
         saturation: String,
         preset: String,
         platform: String,
-        stripMeta: Boolean
+        stripMeta: Boolean,
+        source: SourceColor = SourceColor.BT709
     ): String {
+        // Step 1: YUV (whatever the source is) -> full-range RGB float, with the source
+        // colorimetry stated explicitly on both the input and the output side.
+        val toRgb = "zscale=rin=${if (source.fullRange) "full" else "tv"}:r=full" +
+            ":min=${source.matrix}:pin=${source.primaries}:tin=${source.transfer}" +
+            ":m=gbr:p=${source.primaries}:t=${source.transfer}:d=none"
+
+        // Step 2: RGB float -> BT.2020 / PQ / 10-bit YUV
+        val toHdr = "zscale=rin=full:min=gbr:pin=${source.primaries}:tin=${source.transfer}" +
+            ":primaries=bt2020:transfer=smpte2084:matrix=bt2020nc:npl=203"
+
         val vfBase = "scale=trunc(iw/2)*2:trunc(ih/2)*2" +
             ",eq=saturation=$saturation" +
-            ",zscale=rin=tv:r=full:d=none" +
+            ",$toRgb" +
             ",format=gbrpf32le" +
             ",exposure=$exposure" +
-            ",zscale=primaries=bt2020:transfer=smpte2084:matrix=bt2020nc:npl=203" +
+            ",$toHdr" +
             ",format=yuv420p10le"
 
         val vf = when (platform) {

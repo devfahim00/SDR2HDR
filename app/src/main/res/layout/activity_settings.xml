@@ -1,197 +1,410 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark"
-    android:fillViewport="true">
+    android:orientation="vertical">
 
+    <!-- Top bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:paddingBottom="24dp">
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="4dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_back"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="Back"
+            app:icon="@drawable/ic_arrow_back"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="@color/white" />
 
         <TextView
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingTop="20dp"
-            android:paddingBottom="4dp"
-            android:text="Adjust Grading Settings"
-            android:textColor="@color/cyan"
-            android:textSize="20sp"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:text="Grading settings"
+            android:textColor="@color/white"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/text_file"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_reset"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Reset"
+            android:textColor="@color/cyan" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="middle"
-            android:gravity="center"
-            android:maxLines="2"
-            android:paddingBottom="16dp"
-            android:textColor="@color/gray"
-            android:textSize="13sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Exposure  [-3.0 to 3.0]  (Default: 0.25)"
-            android:textColor="@color/white"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/input_exposure"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="0.25"
-            android:inputType="numberSigned|numberDecimal"
-            android:text="0.25"
-            android:textColor="@color/white"
-            android:textColorHint="@color/gray"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Highlight / MaxCLL  [nits]  (Default: 240)"
-            android:textColor="@color/white"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/input_highlight"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="240"
-            android:inputType="number"
-            android:text="240"
-            android:textColor="@color/white"
-            android:textColorHint="@color/gray"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Saturation  [0.0 to 3.0]  (Default: 1.25)"
-            android:textColor="@color/white"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/input_saturation"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="1.25"
-            android:inputType="numberDecimal"
-            android:text="1.25"
-            android:textColor="@color/white"
-            android:textColorHint="@color/gray"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Encoder Preset"
-            android:textColor="@color/yellow"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <RadioGroup
-            android:id="@+id/group_preset"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <RadioButton
-                android:id="@+id/preset_ultrafast"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="ultrafast - fastest render" />
-
-            <RadioButton
-                android:id="@+id/preset_fast"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="fast - default balanced" />
-
-            <RadioButton
-                android:id="@+id/preset_medium"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="medium - better compression" />
-
-            <RadioButton
-                android:id="@+id/preset_slow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="slow - highest quality" />
-        </RadioGroup>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Platform Optimization"
-            android:textColor="@color/yellow"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <RadioGroup
-            android:id="@+id/group_platform"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <RadioButton
-                android:id="@+id/platform_none"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="No - keep original fps &amp; rate" />
-
-            <RadioButton
-                android:id="@+id/platform_tiktok"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="TikTok - 60fps CFR, 16M cap, AAC 48k" />
-
-            <RadioButton
-                android:id="@+id/platform_instagram"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Instagram - 30fps CFR, 14M cap, AAC 48k" />
-        </RadioGroup>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Metadata Cleaning"
-            android:textColor="@color/yellow"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch_strip"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
             android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:text="Strip old/unwanted metadata"
-            android:textColor="@color/white"
-            android:textSize="15sp" />
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
 
-        <Button
+            <!-- Selected video -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SDR2HDR.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="10dp">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/image_thumb"
+                        android:layout_width="108dp"
+                        android:layout_height="68dp"
+                        android:background="@drawable/bg_thumb"
+                        android:contentDescription="@null"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.SDR2HDR.Thumb" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/text_file"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="middle"
+                            android:maxLines="2"
+                            android:textColor="@color/white"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/text_file_meta"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:textColor="@color/gray"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Grading -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SDR2HDR.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="GRADING"
+                        android:textAppearance="@style/Text.SectionTitle" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_exposure"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:hint="Exposure"
+                app:boxCornerRadiusBottomEnd="14dp"
+                app:boxCornerRadiusBottomStart="14dp"
+                app:boxCornerRadiusTopEnd="14dp"
+                app:boxCornerRadiusTopStart="14dp"
+                app:helperText="-3.0 to 3.0  ·  default 0.25">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_exposure"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="numberSigned|numberDecimal"
+                    android:maxLines="1"
+                    android:text="0.25"
+                    android:textColor="@color/white" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_highlight"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="Highlight / MaxCLL"
+                app:boxCornerRadiusBottomEnd="14dp"
+                app:boxCornerRadiusBottomStart="14dp"
+                app:boxCornerRadiusTopEnd="14dp"
+                app:boxCornerRadiusTopStart="14dp"
+                app:helperText="1 to 10000  ·  default 240"
+            app:suffixText="nits">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_highlight"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:maxLines="1"
+                    android:text="240"
+                    android:textColor="@color/white" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_saturation"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="Saturation"
+                app:boxCornerRadiusBottomEnd="14dp"
+                app:boxCornerRadiusBottomStart="14dp"
+                app:boxCornerRadiusTopEnd="14dp"
+                app:boxCornerRadiusTopStart="14dp"
+                app:helperText="0.0 to 3.0  ·  default 1.25">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_saturation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="numberDecimal"
+                    android:maxLines="1"
+                    android:text="1.25"
+                    android:textColor="@color/white" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Encoder preset -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SDR2HDR.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ENCODER PRESET"
+                        android:textAppearance="@style/Text.SectionTitle" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/group_preset"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/preset_ultrafast"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ultrafast" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/preset_fast"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                android:checked="true"
+                    android:text="fast" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/preset_medium"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="medium" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/preset_slow"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="slow" />
+
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <TextView
+                        android:id="@+id/text_preset_hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Balanced speed and file size (default)"
+                        android:textColor="@color/gray"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Platform -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SDR2HDR.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PLATFORM OPTIMIZATION"
+                        android:textAppearance="@style/Text.SectionTitle" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/group_platform"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/platform_none"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                android:checked="true"
+                    android:text="Original" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/platform_tiktok"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TikTok" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/platform_instagram"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Instagram" />
+
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <TextView
+                        android:id="@+id/text_platform_hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Keep original frame rate and bitrate"
+                        android:textColor="@color/gray"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Metadata -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SDR2HDR.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Clean metadata"
+                            android:textColor="@color/white"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Strip old / unwanted metadata"
+                            android:textColor="@color/gray"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_strip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Bottom action bar -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_dark"
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp">
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_start"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:backgroundTint="@color/cyan"
-            android:text="Start Conversion"
+            android:layout_height="58dp"
+            android:text="Start conversion"
             android:textColor="@color/bg_dark"
-            android:textStyle="bold" />
-    </LinearLayout>
-</ScrollView>
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/cyan"
+            app:icon="@drawable/ic_play"
+            app:iconGravity="textStart"
+            app:iconTint="@color/bg_dark" />
+    </FrameLayout>
+</LinearLayout>

@@ -12,8 +12,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.devfahim00.sdr2hdr.databinding.ActivityMainBinding
 import com.devfahim00.sdr2hdr.databinding.ItemFolderBinding
 import com.devfahim00.sdr2hdr.databinding.ItemHeaderBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -29,20 +30,20 @@ private sealed interface Row
 
 private class HeaderRow(val title: String) : Row
 
-private class FolderRow(val index: Int, val title: String, val path: String) : Row
+private class FolderRow(val title: String, val path: String, val count: Int) : Row
 
 private class HeaderHolder(private val binding: ItemHeaderBinding) :
     RecyclerView.ViewHolder(binding.root) {
     fun bind(title: String) {
-        binding.textHeader.text = title
+        binding.textHeader.text = title.uppercase()
     }
 }
 
 private class FolderHolder(private val binding: ItemFolderBinding) :
     RecyclerView.ViewHolder(binding.root) {
     fun bind(row: FolderRow, onClick: (String) -> Unit) {
-        binding.textIndex.text = "[${row.index}]"
         binding.textFolder.text = row.title
+        binding.textCount.text = if (row.count == 1) "1 video" else "${row.count} videos"
         binding.root.setOnClickListener { onClick(row.path) }
     }
 }
@@ -52,12 +53,12 @@ private class FolderAdapter(private val onFolderClick: (String) -> Unit) :
 
     private val rows = mutableListOf<Row>()
 
-    fun submit(paths: List<String>) {
+    fun submit(folders: List<FolderInfo>) {
         rows.clear()
         val base = Environment.getExternalStorageDirectory().absolutePath + "/"
         var currentGroup: String? = null
-        var idx = 1
-        for (path in paths) {
+        for (folder in folders) {
+            val path = folder.path
             val rel = if (path.startsWith(base)) path.substring(base.length) else path
             val group = rel.substringBefore('/')
             val sub = if (rel.contains('/')) rel.substringAfter('/') else "(Root)"
@@ -65,8 +66,7 @@ private class FolderAdapter(private val onFolderClick: (String) -> Unit) :
                 rows.add(HeaderRow(group))
                 currentGroup = group
             }
-            rows.add(FolderRow(idx, sub, path))
-            idx++
+            rows.add(FolderRow(sub, path, folder.videoCount))
         }
         notifyDataSetChanged()
     }
@@ -112,6 +112,11 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerFolders.layoutManager = LinearLayoutManager(this)
         binding.recyclerFolders.adapter = folderAdapter
 
+        binding.cardAllVideos.setOnClickListener {
+            startActivity(
+                Intent(this, VideoListActivity::class.java).putExtra("all", true)
+            )
+        }
         binding.btnManualPath.setOnClickListener { showManualPathDialog() }
         binding.btnGrant.setOnClickListener { requestStorage() }
     }
@@ -155,13 +160,17 @@ class MainActivity : AppCompatActivity() {
     private fun refresh() {
         val granted = hasStorageAccess()
         binding.permissionPanel.visibility = if (granted) View.GONE else View.VISIBLE
+        binding.cardAllVideos.visibility = if (granted) View.VISIBLE else View.GONE
+        binding.textFoldersLabel.visibility = if (granted) View.VISIBLE else View.GONE
+        binding.btnManualPath.visibility = if (granted) View.VISIBLE else View.GONE
         if (!granted) {
             folderAdapter.submit(emptyList())
+            binding.emptyHint.visibility = View.GONE
             return
         }
         binding.scanProgress.visibility = View.VISIBLE
         executor.execute {
-            val dirs = scanFolders()
+            val dirs = VideoRepository.scanFolders()
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
                 binding.scanProgress.visibility = View.GONE
@@ -171,41 +180,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Mirrors the script: unique folders containing videos under
-     * /sdcard/{DCIM,Download,Movies,Pictures} at depth <= 2, sorted.
-     */
-    private fun scanFolders(): List<String> {
-        val sdcard = Environment.getExternalStorageDirectory()
-        val roots = listOf(
-            File(sdcard, "DCIM"),
-            File(sdcard, "Download"),
-            File(sdcard, "Movies"),
-            File(sdcard, "Pictures")
-        )
-        val found = sortedSetOf<String>()
-        for (root in roots) {
-            if (!root.isDirectory) continue
-            if (containsVideo(root)) found.add(root.absolutePath)
-            val subs = root.listFiles { f -> f.isDirectory } ?: continue
-            for (sub in subs) {
-                if (containsVideo(sub)) found.add(sub.absolutePath)
-            }
-        }
-        return found.toList()
-    }
-
-    private fun containsVideo(dir: File): Boolean {
-        val files = dir.listFiles { f -> VideoUtils.isVideoFile(f) } ?: return false
-        return files.isNotEmpty()
-    }
-
     private fun showManualPathDialog() {
         val input = EditText(this)
         input.hint = "/storage/emulated/0/YourFolder"
-        AlertDialog.Builder(this)
+        input.setSingleLine()
+        val pad = (20 * resources.displayMetrics.density).toInt()
+        val container = FrameLayout(this)
+        container.setPadding(pad, pad / 2, pad, 0)
+        container.addView(input)
+
+        MaterialAlertDialogBuilder(this)
             .setTitle("Enter folder path")
-            .setView(input)
+            .setView(container)
             .setPositiveButton("OK") { _, _ ->
                 val path = input.text.toString().trim()
                 if (path.isNotEmpty()) {

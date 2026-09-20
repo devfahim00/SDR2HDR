@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Palette from the original sdr2hdr.sh Termux script -->
+    <!-- Base palette (from the original sdr2hdr.sh Termux script) -->
     <color name="bg_dark">#0F172A</color>
     <color name="bg_panel">#1E293B</color>
     <color name="cyan">#38BDF8</color>
@@ -10,4 +10,20 @@
     <color name="gray">#94A3B8</color>
     <color name="alert">#F43F5E</color>
     <color name="launcher_bg">#0F172A</color>
+
+    <!-- Modern UI additions -->
+    <color name="card_bg">#162033</color>
+    <color name="outline">#2A3852</color>
+    <color name="ripple">#3338BDF8</color>
+    <color name="primary_container">#0C4A6E</color>
+    <color name="cyan_light">#7DD3FC</color>
+    <color name="sky_dark">#0284C7</color>
+    <color name="indigo">#6366F1</color>
+    <color name="scrim_black">#B3000000</color>
+    <color name="success_bg">#10281F</color>
+    <color name="success_stroke">#1F5A3F</color>
+    <color name="error_bg">#2B1420</color>
+    <color name="error_stroke">#6B2036</color>
+    <color name="alert_container">#4C1224</color>
+    <color name="alert_light">#FDA4AF</color>
 </resources>
