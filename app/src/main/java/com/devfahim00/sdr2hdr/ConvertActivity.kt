@@ -192,7 +192,7 @@ class ConvertActivity : AppCompatActivity() {
         binding.containerSummary.addView(row.root)
     }
 
-    private fun startEncode(source: SourceColor) {
+    private fun startEncode(source: SourceColor, forceFrameProps: Boolean = false) {
         val p = params ?: return
         started = true
         stopRequested = false
@@ -201,7 +201,7 @@ class ConvertActivity : AppCompatActivity() {
         binding.textStatus.text = "Encoding..."
         val command = FfmpegEngine.buildCommand(
             p.input, p.output, p.exposure, p.highlight, p.saturation,
-            p.preset, p.platform, p.strip, source
+            p.preset, p.platform, p.strip, source, forceFrameProps
         )
         val session = FFmpegKit.executeAsync(
             command,
@@ -250,15 +250,13 @@ class ConvertActivity : AppCompatActivity() {
 
         val failed = !ReturnCode.isSuccess(rc) && !ReturnCode.isCancel(rc) && !stopRequested
 
-        // A zscale colour-space failure with the probed profile: retry once with a plain
-        // BT.709 profile before giving up.
-        if (failed && !retried && isColorError(logs) &&
-            SourceColor.from(inputMeta) != SourceColor.BT709
-        ) {
+        // A zscale colour-space failure: retry once with a plain BT.709 profile and the colour
+        // tags of the decoded frames force-overwritten, before giving up.
+        if (failed && !retried && isColorError(logs)) {
             retried = true
             outFile?.delete()
             binding.textStatus.text = "Retrying with safe colour profile..."
-            startEncode(SourceColor.BT709)
+            startEncode(SourceColor.BT709, forceFrameProps = true)
             return
         }
 

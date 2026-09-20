@@ -71,7 +71,7 @@ The app now reads `color_space / color_primaries / color_transfer / color_range`
 passes them to `zscale` explicitly (`min/pin/tin/rin` on input, `m=gbr:p:t` on output). Unknown or
 bogus tags fall back to BT.709 (HD) / BT.601 (SD). For correctly tagged BT.709 sources the output is
 bit-identical to the old chain. If a colour error still happens, the app retries once with a plain
-BT.709 profile before reporting a failure.
+BT.709 profile and force-overwritten frame colour tags (`setparams`) before reporting a failure.
 
 ## Differences vs the Termux script
 

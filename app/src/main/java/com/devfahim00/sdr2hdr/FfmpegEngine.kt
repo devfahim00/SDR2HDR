@@ -76,7 +76,8 @@ object FfmpegEngine {
         preset: String,
         platform: String,
         stripMeta: Boolean,
-        source: SourceColor = SourceColor.BT709
+        source: SourceColor = SourceColor.BT709,
+        forceFrameProps: Boolean = false
     ): String {
         // Step 1: YUV (whatever the source is) -> full-range RGB float, with the source
         // colorimetry stated explicitly on both the input and the output side.
@@ -88,8 +89,23 @@ object FfmpegEngine {
         val toHdr = "zscale=rin=full:min=gbr:pin=${source.primaries}:tin=${source.transfer}" +
             ":primaries=bt2020:transfer=smpte2084:matrix=bt2020nc:npl=203"
 
+        // Optional second line of defence (used on retry): also overwrite the colour tags on the
+        // decoded frames themselves, so zscale never sees a bogus "gbr" / unspecified tag.
+        val frameProps = if (forceFrameProps) {
+            val trc = when (source.transfer) {
+                "2020_10" -> "bt2020-10"
+                "2020_12" -> "bt2020-12"
+                else -> source.transfer
+            }
+            ",setparams=colorspace=${source.matrix}:color_primaries=${source.primaries}" +
+                ":color_trc=$trc:range=${if (source.fullRange) "pc" else "tv"}"
+        } else {
+            ""
+        }
+
         val vfBase = "scale=trunc(iw/2)*2:trunc(ih/2)*2" +
             ",eq=saturation=$saturation" +
+            frameProps +
             ",$toRgb" +
             ",format=gbrpf32le" +
             ",exposure=$exposure" +
