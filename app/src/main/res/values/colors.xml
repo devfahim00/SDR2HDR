@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Palette from the original sdr2hdr.sh Termux script -->
+    <color name="bg_dark">#0F172A</color>
+    <color name="bg_panel">#1E293B</color>
+    <color name="cyan">#38BDF8</color>
+    <color name="yellow">#FACC15</color>
+    <color name="green">#4ADE80</color>
+    <color name="white">#F8FAFC</color>
+    <color name="gray">#94A3B8</color>
+    <color name="alert">#F43F5E</color>
+    <color name="launcher_bg">#0F172A</color>
+</resources>
