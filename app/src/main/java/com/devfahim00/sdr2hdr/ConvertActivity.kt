@@ -1,5 +1,7 @@
 package com.devfahim00.sdr2hdr
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -13,7 +15,9 @@ import android.os.Looper
 import android.os.PowerManager
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.LinearInterpolator
 import android.widget.Toast
+import androidx.annotation.ColorRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.antonkarpenko.ffmpegkit.FFmpegKit
@@ -61,6 +65,7 @@ class ConvertActivity : AppCompatActivity() {
     private var inputMeta: VideoMeta? = null
     private var retried = false
     private var lastLogs = ""
+    private var pulse: ObjectAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,7 +135,7 @@ class ConvertActivity : AppCompatActivity() {
             if (sessionId >= 0 && !stopRequested) {
                 stopRequested = true
                 binding.btnStop.isEnabled = false
-                binding.textStatus.text = "Stopping..."
+                setStatus("Stopping...", R.color.amber)
                 FFmpegKit.cancel(sessionId)
             }
         }
@@ -142,7 +147,7 @@ class ConvertActivity : AppCompatActivity() {
             Toast.makeText(this, "Log copied", Toast.LENGTH_SHORT).show()
         }
 
-        binding.textStatus.text = "Analyzing input..."
+        setStatus("Analyzing input...")
 
         executor.execute {
             val meta = VideoUtils.probeVideo(inputPath)
@@ -153,7 +158,7 @@ class ConvertActivity : AppCompatActivity() {
                         failUi("Could not read video metadata (ffprobe failed).")
                     }
                     meta.isHdr -> {
-                        binding.textStatus.text = "Skipped"
+                        setStatus("Skipped", R.color.amber)
                         MaterialAlertDialogBuilder(this)
                             .setTitle("Already HDR")
                             .setMessage("Input video is already HDR. Skipping conversion.")
@@ -185,6 +190,28 @@ class ConvertActivity : AppCompatActivity() {
         }
     }
 
+    private fun setStatus(text: String, @ColorRes color: Int = R.color.green) {
+        binding.textStatus.text = text
+        binding.textStatus.setTextColor(ContextCompat.getColor(this, color))
+    }
+
+    private fun startPulse() {
+        if (pulse?.isRunning == true) return
+        pulse = ObjectAnimator.ofFloat(binding.textStatus, "alpha", 1f, 0.45f).apply {
+            duration = 900
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            start()
+        }
+    }
+
+    private fun stopPulse() {
+        pulse?.cancel()
+        pulse = null
+        binding.textStatus.alpha = 1f
+    }
+
     private fun addKv(key: String, value: String) {
         val row = ItemKvBinding.inflate(layoutInflater, binding.containerSummary, false)
         row.textKey.text = key
@@ -198,7 +225,8 @@ class ConvertActivity : AppCompatActivity() {
         stopRequested = false
         binding.btnStop.isEnabled = true
         acquireWake()
-        binding.textStatus.text = "Encoding..."
+        setStatus("Encoding HDR10 BT.2020 / PQ frames...")
+        startPulse()
         val command = FfmpegEngine.buildCommand(
             p.input, p.output, p.exposure, p.highlight, p.saturation,
             p.preset, p.platform, p.strip, source, forceFrameProps
@@ -236,10 +264,9 @@ class ConvertActivity : AppCompatActivity() {
         } else {
             "--:--"
         }
-        binding.textStatus.text = "Encoding..."
         binding.textFrames.text =
             if (totalFrames > 0) "$frames / $totalFrames" else frames.toString()
-        binding.textFps.text = String.format(Locale.US, "%.1f fps", fps)
+        binding.textFps.text = String.format(Locale.US, "%.1f", fps)
         binding.textEta.text = etaStr
     }
 
@@ -255,12 +282,13 @@ class ConvertActivity : AppCompatActivity() {
         if (failed && !retried && isColorError(logs)) {
             retried = true
             outFile?.delete()
-            binding.textStatus.text = "Retrying with safe colour profile..."
+            setStatus("Retrying with safe colour profile...", R.color.amber)
             startEncode(SourceColor.BT709, forceFrameProps = true)
             return
         }
 
         started = false
+        stopPulse()
         releaseWake()
         binding.btnStop.isEnabled = false
         binding.btnStop.visibility = View.GONE
@@ -269,8 +297,9 @@ class ConvertActivity : AppCompatActivity() {
         when {
             ReturnCode.isSuccess(rc) -> {
                 binding.progressBar.setProgressCompat(100, true)
+                binding.progressBar.setIndicatorColor(ContextCompat.getColor(this, R.color.green))
                 binding.textPercent.text = "100%"
-                binding.textStatus.text = "Complete"
+                setStatus("Complete")
                 outFile?.let {
                     MediaScannerConnection.scanFile(
                         this, arrayOf(it.absolutePath), arrayOf("video/mp4")
@@ -290,14 +319,14 @@ class ConvertActivity : AppCompatActivity() {
             }
             ReturnCode.isCancel(rc) || stopRequested -> {
                 outFile?.delete()
-                binding.textStatus.text = "Stopped"
+                setStatus("Process stopped · incomplete video deleted.", R.color.amber)
                 showResult(ok = false, text = "Conversion stopped by user")
             }
             else -> {
                 outFile?.delete()
                 lastLogs = logs.takeLast(1500)
                     .ifEmpty { "FFmpeg exited with code ${rc?.value ?: "unknown"}" }
-                binding.textStatus.text = "ERROR"
+                setStatus("ERROR", R.color.red)
                 val summary = if (isColorError(logs)) {
                     "The colour information of this video could not be processed, even after " +
                         "retrying with a safe profile. Please copy the log below and report it."
@@ -319,9 +348,9 @@ class ConvertActivity : AppCompatActivity() {
         binding.textResult.text = text
         if (!ok) {
             binding.iconResult.setImageResource(R.drawable.ic_error)
-            binding.iconResult.setColorFilter(ContextCompat.getColor(this, R.color.yellow))
-            binding.cardResult.setCardBackgroundColor(ContextCompat.getColor(this, R.color.card_bg))
-            binding.cardResult.strokeColor = ContextCompat.getColor(this, R.color.outline)
+            binding.iconResult.setColorFilter(ContextCompat.getColor(this, R.color.amber))
+            binding.cardResult.setCardBackgroundColor(ContextCompat.getColor(this, R.color.amber_bg))
+            binding.cardResult.strokeColor = ContextCompat.getColor(this, R.color.amber_stroke)
         }
     }
 
@@ -371,7 +400,7 @@ class ConvertActivity : AppCompatActivity() {
         started = false
         binding.btnStop.visibility = View.GONE
         binding.btnDone.visibility = View.VISIBLE
-        binding.textStatus.text = "ERROR"
+        setStatus("ERROR", R.color.red)
         showError(msg, "")
     }
 
@@ -395,6 +424,7 @@ class ConvertActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopPulse()
         releaseWake()
         executor.shutdown()
         if (started && sessionId >= 0) FFmpegKit.cancel(sessionId)

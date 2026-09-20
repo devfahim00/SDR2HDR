@@ -3,55 +3,104 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark"
+    android:background="@color/bg"
     android:orientation="vertical">
 
-    <!-- Header -->
+    <!-- Header: display title + neumorphic day/night toggle -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="20dp"
-        android:paddingTop="20dp"
+        android:paddingTop="18dp"
         android:paddingEnd="20dp"
-        android:paddingBottom="16dp">
-
-        <FrameLayout
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/bg_logo">
-
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:layout_gravity="center"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_logo_mark" />
-        </FrameLayout>
+        android:paddingBottom="18dp">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
             <TextView
+                style="@style/Text.Display"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/app_name"
-                android:textColor="@color/white"
-                android:textSize="24sp"
-                android:textStyle="bold" />
+                android:textSize="30sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="SDR to HDR10 converter  ·  runs fully on-device"
-                android:textColor="@color/gray"
+                android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="SDR → HDR10  ·  BT.2020 · SMPTE 2084 PQ"
+                android:textColor="@color/text_dim"
                 android:textSize="12sp" />
         </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/theme_toggle"
+            android:layout_width="82dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_toggle_track"
+            android:clickable="true"
+            android:clipChildren="false"
+            android:contentDescription="Toggle dark mode"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginStart="13dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_sun"
+                android:tint="@color/toggle_icon" />
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginEnd="13dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_moon"
+                android:tint="@color/toggle_icon" />
+
+            <FrameLayout
+                android:id="@+id/toggle_thumb"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="start|center_vertical"
+                android:background="@drawable/bg_toggle_glow">
+
+                <View
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_toggle_thumb" />
+
+                <ImageView
+                    android:id="@+id/symbol_sun"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_sun"
+                    android:tint="@color/white" />
+
+                <ImageView
+                    android:id="@+id/symbol_moon"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_gravity="center"
+                    android:alpha="0"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_moon"
+                    android:tint="@color/white" />
+            </FrameLayout>
+        </FrameLayout>
     </LinearLayout>
 
     <!-- Permission card -->
@@ -64,14 +113,14 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="12dp"
         android:visibility="gone"
-        app:cardBackgroundColor="@color/error_bg"
-        app:strokeColor="@color/error_stroke">
+        app:cardBackgroundColor="@color/amber_bg"
+        app:strokeColor="@color/amber_stroke">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -80,118 +129,111 @@
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_lock"
-                    android:tint="@color/alert_light" />
+                    android:tint="@color/amber" />
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"
                     android:layout_weight="1"
+                    android:fontFamily="sans-serif-medium"
                     android:text="Storage access needed"
-                    android:textColor="@color/white"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:textColor="@color/text"
+                    android:textSize="15sp" />
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:lineSpacingMultiplier="1.1"
                 android:text="All Files access is required to browse your videos and save converted HDR10 files to Movies."
-                android:textColor="@color/gray"
-                android:textSize="13sp" />
+                android:textColor="@color/text_dim"
+                android:textSize="12.5sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_grant"
+                style="@style/Widget.SDR2HDR.Button.Primary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:text="Grant All Files Access"
-                android:textColor="@color/bg_dark"
-                android:textStyle="bold"
-                app:backgroundTint="@color/cyan" />
+                android:text="Grant All Files Access" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- "All videos" hero -->
+    <!-- "All videos" drop-zone card -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/card_all_videos"
+        style="@style/Widget.SDR2HDR.Card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:clickable="true"
         android:focusable="true"
-        android:visibility="gone"
-        app:cardBackgroundColor="@android:color/transparent"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="0dp"
-        app:rippleColor="#33FFFFFF"
-        app:strokeWidth="0dp">
+        android:visibility="gone">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_hero"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="20dp">
-
-            <FrameLayout
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:background="@drawable/bg_hero_tile">
-
-                <ImageView
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_video_library"
-                    android:tint="@color/white" />
-            </FrameLayout>
+            android:orientation="vertical"
+            android:padding="12dp">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:background="@drawable/bg_dropzone"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:paddingStart="14dp"
+                android:paddingTop="24dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="22dp">
+
+                <FrameLayout
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_upload_circle">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_upload"
+                        android:tint="@color/blue" />
+                </FrameLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="All videos"
-                    android:textColor="@color/white"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Pick a video to convert"
+                    android:textColor="@color/text"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/text_all_videos_sub"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
                     android:text="Every video on this device, in one list"
-                    android:textColor="#CCFFFFFF"
-                    android:textSize="13sp" />
+                    android:textColor="@color/text_dim"
+                    android:textSize="11.5sp" />
             </LinearLayout>
-
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron_right"
-                android:tint="@color/white" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
     <!-- Folders label -->
     <TextView
         android:id="@+id/text_folders_label"
+        style="@style/Text.Section"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingStart="24dp"
@@ -199,7 +241,6 @@
         android:paddingEnd="24dp"
         android:paddingBottom="6dp"
         android:text="OR PICK A FOLDER"
-        android:textAppearance="@style/Text.SectionTitle"
         android:visibility="gone" />
 
     <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -210,18 +251,21 @@
         android:layout_marginEnd="24dp"
         android:indeterminate="true"
         android:visibility="gone"
-        app:indicatorColor="@color/cyan"
-        app:trackColor="@color/outline" />
+        app:indicatorColor="@color/blue"
+        app:trackColor="@color/track_bg"
+        app:trackCornerRadius="2dp"
+        app:trackThickness="4dp" />
 
     <TextView
         android:id="@+id/empty_hint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
+        android:lineSpacingMultiplier="1.1"
         android:padding="24dp"
         android:text="No standard video folders detected.\nTry &quot;All videos&quot; or enter a folder path manually."
-        android:textColor="@color/gray"
-        android:textSize="14sp"
+        android:textColor="@color/text_dim"
+        android:textSize="13sp"
         android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -236,16 +280,13 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_manual_path"
-        style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+        style="@style/Widget.SDR2HDR.Button.Outlined"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="4dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:text="Enter folder path manually"
-        android:textColor="@color/cyan"
-        app:icon="@drawable/ic_edit"
-        app:iconTint="@color/cyan"
-        app:strokeColor="@color/outline" />
+        app:icon="@drawable/ic_edit" />
 </LinearLayout>

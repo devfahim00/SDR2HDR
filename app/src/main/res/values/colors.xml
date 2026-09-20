@@ -1,29 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base palette (from the original sdr2hdr.sh Termux script) -->
-    <color name="bg_dark">#0F172A</color>
-    <color name="bg_panel">#1E293B</color>
-    <color name="cyan">#38BDF8</color>
-    <color name="yellow">#FACC15</color>
-    <color name="green">#4ADE80</color>
-    <color name="white">#F8FAFC</color>
-    <color name="gray">#94A3B8</color>
-    <color name="alert">#F43F5E</color>
+    <!-- HDR10 Studio palette (light). Night overrides live in values-night/colors.xml -->
+    <color name="bg">#ECEEF4</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface2">#F7F8FC</color>
+    <color name="border">#14000000</color>
+    <color name="border_md">#24000000</color>
+    <color name="text">#111116</color>
+    <color name="text_muted">#222228</color>
+    <color name="text_dim">#545763</color>
+
+    <color name="blue">#1C75FD</color>
+    <color name="blue_dark">#0057D9</color>
+    <color name="blue_light">#E8F2FF</color>
+    <color name="blue_dash">#591C75FD</color>
+    <color name="blue_glow">#A61C75FD</color>
+    <color name="blue_glow_edge">#001C75FD</color>
+    <color name="green">#34C759</color>
+    <color name="green_accent">#79E394</color>
+    <color name="amber">#FF9500</color>
+    <color name="red">#EB3741</color>
+    <color name="white">#FFFFFF</color>
+    <color name="glass_stroke">#5CFFFFFF</color>
+
+    <color name="pill_active_bg">#111116</color>
+    <color name="pill_active_text">#FFFFFF</color>
+    <color name="track_bg">#14000000</color>
+
+    <color name="toggle_track_start">#DDE1EC</color>
+    <color name="toggle_track_end">#F4F6FB</color>
+    <color name="toggle_stroke">#FFFFFF</color>
+    <color name="toggle_icon">#7E8698</color>
+
+    <color name="success_bg">#EAF8EE</color>
+    <color name="success_stroke">#5534C759</color>
+    <color name="error_bg">#FDECEE</color>
+    <color name="error_stroke">#55EB3741</color>
+    <color name="amber_bg">#FFF4E5</color>
+    <color name="amber_stroke">#55FF9500</color>
+
+    <color name="scrim_black">#A6000000</color>
     <color name="launcher_bg">#0F172A</color>
 
-    <!-- Modern UI additions -->
-    <color name="card_bg">#162033</color>
-    <color name="outline">#2A3852</color>
-    <color name="ripple">#3338BDF8</color>
-    <color name="primary_container">#0C4A6E</color>
-    <color name="cyan_light">#7DD3FC</color>
-    <color name="sky_dark">#0284C7</color>
-    <color name="indigo">#6366F1</color>
-    <color name="scrim_black">#B3000000</color>
-    <color name="success_bg">#10281F</color>
-    <color name="success_stroke">#1F5A3F</color>
-    <color name="error_bg">#2B1420</color>
-    <color name="error_stroke">#6B2036</color>
-    <color name="alert_container">#4C1224</color>
-    <color name="alert_light">#FDA4AF</color>
+    <bool name="light_bars">true</bool>
 </resources>

@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/text_header"
+    style="@style/Text.Section"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="8dp"
-    android:paddingTop="18dp"
+    android:paddingTop="16dp"
     android:paddingEnd="8dp"
-    android:paddingBottom="2dp"
-    android:textColor="@color/yellow"
-    android:textSize="12sp"
-    android:textStyle="bold" />
+    android:paddingBottom="2dp" />

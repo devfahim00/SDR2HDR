@@ -1,51 +1,189 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SDR2HDR" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">@color/cyan</item>
-        <item name="colorOnPrimary">@color/bg_dark</item>
-        <item name="colorPrimaryContainer">@color/primary_container</item>
-        <item name="colorOnPrimaryContainer">@color/cyan_light</item>
-        <item name="colorSecondary">@color/yellow</item>
-        <item name="colorOnSecondary">@color/bg_dark</item>
-        <item name="colorSecondaryContainer">@color/primary_container</item>
-        <item name="colorOnSecondaryContainer">@color/cyan_light</item>
+    <style name="Theme.SDR2HDR" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/blue</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/blue_light</item>
+        <item name="colorOnPrimaryContainer">@color/blue</item>
+        <item name="colorSecondary">@color/blue</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/blue_light</item>
+        <item name="colorOnSecondaryContainer">@color/blue</item>
         <item name="colorTertiary">@color/green</item>
-        <item name="colorError">@color/alert</item>
-        <item name="colorErrorContainer">@color/alert_container</item>
-        <item name="colorOnErrorContainer">@color/alert_light</item>
-        <item name="colorSurface">@color/bg_dark</item>
-        <item name="colorOnSurface">@color/white</item>
-        <item name="colorSurfaceVariant">@color/bg_panel</item>
-        <item name="colorOnSurfaceVariant">@color/gray</item>
-        <item name="colorOutline">@color/outline</item>
-        <item name="colorOutlineVariant">@color/outline</item>
-        <item name="android:windowBackground">@color/bg_dark</item>
-        <item name="android:statusBarColor">@color/bg_dark</item>
-        <item name="android:navigationBarColor">@color/bg_dark</item>
-        <item name="android:textColorHint">@color/gray</item>
+        <item name="colorError">@color/red</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text</item>
+        <item name="colorSurfaceVariant">@color/surface2</item>
+        <item name="colorOnSurfaceVariant">@color/text_dim</item>
+        <item name="colorSurfaceContainerHigh">@color/surface</item>
+        <item name="colorOutline">@color/border_md</item>
+        <item name="colorOutlineVariant">@color/border</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:windowLightStatusBar">@bool/light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_bars</item>
+        <item name="android:textColorHint">@color/text_dim</item>
     </style>
 
-    <!-- Cards -->
+    <!-- ─── Cards: white surface, 22dp radius, hairline border (HDR10 Studio .card) ─── -->
     <style name="Widget.SDR2HDR.Card" parent="Widget.Material3.CardView.Filled">
-        <item name="cardBackgroundColor">@color/card_bg</item>
-        <item name="cardCornerRadius">20dp</item>
-        <item name="cardElevation">0dp</item>
-        <item name="strokeColor">@color/outline</item>
+        <item name="cardBackgroundColor">@color/surface</item>
+        <item name="cardCornerRadius">22dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="strokeColor">@color/border</item>
         <item name="strokeWidth">1dp</item>
-        <item name="rippleColor">@color/ripple</item>
+        <item name="rippleColor">@color/blue_light</item>
     </style>
 
     <!-- Thumbnails -->
     <style name="ShapeAppearance.SDR2HDR.Thumb" parent="">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">12dp</item>
+        <item name="cornerSize">14dp</item>
     </style>
 
-    <!-- Section title in cards -->
-    <style name="Text.SectionTitle" parent="TextAppearance.Material3.LabelLarge">
-        <item name="android:textColor">@color/cyan</item>
-        <item name="android:textSize">13sp</item>
+    <!-- ─── Typography ─── -->
+    <style name="Text.Display" parent="">
+        <item name="android:fontFamily">@font/titan_one</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="Text.Section" parent="">
+        <item name="android:textColor">@color/text_dim</item>
+        <item name="android:textSize">11sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:letterSpacing">0.08</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <style name="Text.Mono" parent="">
+        <item name="android:fontFamily">@font/dm_mono_medium</item>
+        <item name="android:textColor">@color/text</item>
+    </style>
+
+    <style name="Text.MonoDim" parent="">
+        <item name="android:fontFamily">@font/dm_mono_regular</item>
+        <item name="android:textColor">@color/text_dim</item>
+    </style>
+
+    <!-- ─── Pill tabs (Chip.Filter → .pill-tab). Active = inverted black/white. ─── -->
+    <style name="Widget.SDR2HDR.Pill" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/pill_bg</item>
+        <item name="chipStrokeColor">@color/pill_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipCornerRadius">25dp</item>
+        <item name="chipMinHeight">34dp</item>
+        <item name="chipStartPadding">6dp</item>
+        <item name="chipEndPadding">6dp</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="android:textSize">12.5sp</item>
+        <item name="android:textColor">@color/pill_text</item>
+        <item name="rippleColor">@color/blue_light</item>
+    </style>
+
+    <!-- The recommended default option keeps a blue outline while unselected. -->
+    <style name="Widget.SDR2HDR.Pill.Default" parent="Widget.SDR2HDR.Pill">
+        <item name="chipStrokeColor">@color/pill_stroke_default</item>
+        <item name="android:textColor">@color/pill_text_default</item>
+    </style>
+
+    <!-- ─── Buttons ─── -->
+    <!-- Glass-blue primary (.convert-btn) -->
+    <style name="Widget.SDR2HDR.Button.Primary" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/blue</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="iconTint">@color/white</item>
+        <item name="cornerRadius">18dp</item>
+        <item name="strokeColor">@color/glass_stroke</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:elevation">8dp</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:outlineSpotShadowColor">@color/blue</item>
+        <item name="android:outlineAmbientShadowColor">@color/blue</item>
+    </style>
+
+    <!-- Stop (red variant of the primary) -->
+    <style name="Widget.SDR2HDR.Button.Stop" parent="Widget.SDR2HDR.Button.Primary">
+        <item name="backgroundTint">@color/red</item>
+        <item name="android:outlineSpotShadowColor">@color/red</item>
+        <item name="android:outlineAmbientShadowColor">@color/red</item>
+    </style>
+
+    <!-- Success (.download-btn) -->
+    <style name="Widget.SDR2HDR.Button.Success" parent="Widget.SDR2HDR.Button.Primary">
+        <item name="backgroundTint">@color/green</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="strokeWidth">0dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:minHeight">50dp</item>
+        <item name="android:outlineSpotShadowColor">@color/green</item>
+        <item name="android:outlineAmbientShadowColor">@color/green</item>
+    </style>
+
+    <!-- Quiet outlined button -->
+    <style name="Widget.SDR2HDR.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton.Icon">
+        <item name="cornerRadius">18dp</item>
+        <item name="strokeColor">@color/border_md</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="iconTint">@color/text_muted</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minHeight">52dp</item>
+    </style>
+
+    <!-- Small "Reset" pill -->
+    <style name="Widget.SDR2HDR.Button.Reset" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="backgroundTint">@color/surface</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="strokeColor">@color/border_md</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minHeight">32dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+    </style>
+
+    <!-- Round back button -->
+    <style name="Widget.SDR2HDR.Button.Back" parent="Widget.Material3.Button.IconButton">
+        <item name="backgroundTint">@color/surface</item>
+        <item name="cornerRadius">22dp</item>
+        <item name="strokeColor">@color/border</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="iconTint">@color/text</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">0dp</item>
+        <item name="iconSize">22dp</item>
+    </style>
+
+    <!-- ─── Search field ─── -->
+    <style name="Widget.SDR2HDR.Field" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/box_stroke</item>
+        <item name="boxBackgroundColor">@color/surface</item>
+        <item name="hintTextColor">@color/blue</item>
+        <item name="startIconTint">@color/text_dim</item>
+        <item name="endIconTint">@color/text_dim</item>
+        <item name="boxCornerRadiusTopStart">16dp</item>
+        <item name="boxCornerRadiusTopEnd">16dp</item>
+        <item name="boxCornerRadiusBottomStart">16dp</item>
+        <item name="boxCornerRadiusBottomEnd">16dp</item>
     </style>
 </resources>

@@ -3,18 +3,22 @@ package com.devfahim00.sdr2hdr
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.OvershootInterpolator
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -119,6 +123,42 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnManualPath.setOnClickListener { showManualPathDialog() }
         binding.btnGrant.setOnClickListener { requestStorage() }
+        setupThemeToggle()
+    }
+
+    private fun isNight(): Boolean =
+        (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
+
+    /** Neumorphic sun / moon switch: slides the glowing thumb, then applies the new theme. */
+    private fun setupThemeToggle() {
+        val night = isNight()
+        val travel = 38f * resources.displayMetrics.density
+        binding.toggleThumb.translationX = if (night) travel else 0f
+        binding.symbolSun.alpha = if (night) 0f else 1f
+        binding.symbolMoon.alpha = if (night) 1f else 0f
+
+        binding.themeToggle.setOnClickListener { toggle ->
+            val toNight = !night
+            toggle.isClickable = false
+            toggle.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            binding.toggleThumb.animate()
+                .translationX(if (toNight) travel else 0f)
+                .setDuration(320)
+                .setInterpolator(OvershootInterpolator(1.1f))
+                .start()
+            binding.symbolSun.animate().alpha(if (toNight) 0f else 1f).setDuration(220).start()
+            binding.symbolMoon.animate().alpha(if (toNight) 1f else 0f).setDuration(220).start()
+            toggle.postDelayed({
+                val mode = if (toNight) {
+                    AppCompatDelegate.MODE_NIGHT_YES
+                } else {
+                    AppCompatDelegate.MODE_NIGHT_NO
+                }
+                ThemePrefs.save(this, mode)
+                AppCompatDelegate.setDefaultNightMode(mode)
+            }, 340)
+        }
     }
 
     override fun onResume() {

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0C0D12</color>
+    <color name="surface">#16171F</color>
+    <color name="surface2">#1E202B</color>
+    <color name="border">#14FFFFFF</color>
+    <color name="border_md">#26FFFFFF</color>
+    <color name="text">#F4F5F8</color>
+    <color name="text_muted">#D0D3DE</color>
+    <color name="text_dim">#8B8EA0</color>
+
+    <color name="blue_light">#171C75FD</color>
+
+    <color name="pill_active_bg">#F0F2F8</color>
+    <color name="pill_active_text">#111116</color>
+    <color name="track_bg">#1AFFFFFF</color>
+
+    <color name="toggle_track_start">#0B0C11</color>
+    <color name="toggle_track_end">#191B24</color>
+    <color name="toggle_stroke">#14FFFFFF</color>
+    <color name="toggle_icon">#444A5B</color>
+
+    <color name="success_bg">#10281F</color>
+    <color name="error_bg">#2B1420</color>
+    <color name="amber_bg">#2B2010</color>
+
+    <bool name="light_bars">false</bool>
+</resources>

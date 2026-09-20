@@ -13,9 +13,10 @@ same defaults, same output behavior.
 - Folder browser scanning `DCIM`, `Download`, `Movies`, `Pictures` (depth ≤ 2) with per-folder
   video counts + manual path entry
 - Video list with thumbnails, size / quality (SD/HD/FHD/UHD) / frame count / duration, HDR detection
-- Modern Material 3 dark UI (cards, chips, progress stats, result/error cards)
-- Grading settings: **Exposure** (default 0.25), **Highlight / MaxCLL nits** (default 240),
-  **Saturation** (default 1.25)
+- **HDR10 Studio** UI: light / dark themes with a neumorphic sun-moon toggle, rounded cards, pill tabs,
+  gradient sliders, glowing convert button, progress stat tiles and result/error cards
+- Grading sliders: **Exposure** −3.0…3.0 (default 0.25), **Highlight / MaxCLL nits** 100…1000
+  (default 240), **Saturation** 0.0…3.0 (default 1.25)
 - Encoder presets: ultrafast / fast (default) / medium / slow (libx265, CRF 20)
 - Platform optimization: none (default) / TikTok (60 fps CFR, 16M cap, AAC 192k 48k) /
   Instagram (30 fps CFR, 14M cap, AAC 192k 48k)
@@ -79,6 +80,9 @@ BT.709 profile and force-overwritten frame colour tags (`setparams`) before repo
 - Everything else — filter chain, defaults, output naming, HDR skip, platform presets — is the same
 
 ## Credits / licensing
+
+UI fonts (bundled, SIL Open Font License 1.1): [Titan One](https://fonts.google.com/specimen/Titan+One)
+and [DM Mono](https://fonts.google.com/specimen/DM+Mono).
 
 FFmpeg (`full-gpl` build with libx265) is bundled via the maintained
 [ffmpeg-kit](https://github.com/sk3llo/ffmpeg-kit-flutter) fork
