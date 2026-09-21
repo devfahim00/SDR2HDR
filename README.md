@@ -50,6 +50,14 @@ same defaults, same output behavior.
     grading chips and sliders, an interactive RGB curves editor, then start / pause /
     resume / stop with live progress. Runs as a foreground service with a persistent
     notification (long-press the row to copy the URL)
+  - **Cross-device upload & PC-side render** — the web page is fully responsive (phone or
+    desktop). Any device on the LAN can **upload** videos straight to the phone
+    (`Movies/SDR2HDR_Uploads`), or — from a PC — pick **"Render on this PC — no upload"**:
+    the file never leaves that computer. Desktop Chrome / Edge render true HDR WebM locally
+    (WebCodecs + WebGL, the phone only serves bytes); Firefox and friends fall back to a
+    real-time *compatibility* render (MediaRecorder, SDR-grade 8-bit) so the phone stays
+    idle either way. Finished files can be downloaded on any device or sent back to the
+    phone
   - **Check for Updates** (manual, bypasses the 6 h auto-check limit) and **About**
 - **Curves editor fix** — dragging curve points no longer scrolls the settings page
   (parent touch-interception disabled during drags, bigger canvas, larger grab radius)
