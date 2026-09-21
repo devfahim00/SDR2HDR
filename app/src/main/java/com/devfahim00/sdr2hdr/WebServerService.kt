@@ -430,7 +430,7 @@ class WebServerService : Service() {
             }
             val extras = HashMap<String, String>()
             val nameEnc = java.net.URLEncoder.encode(file.name, "UTF-8").replace("+", "%20")
-            val disposition = req.query["inline"] == "1" ? "inline" : "attachment"
+            val disposition = if (req.query["inline"] == "1") "inline" else "attachment"
             extras["Content-Disposition"] = "$disposition; filename*=UTF-8''$nameEnc"
             extras["Accept-Ranges"] = "none"
             writeHead(out, "200 OK", mime, file.length(), extras)
