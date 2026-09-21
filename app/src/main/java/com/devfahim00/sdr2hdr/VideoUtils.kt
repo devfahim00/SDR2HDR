@@ -14,7 +14,8 @@ data class VideoMeta(
     val colorSpace: String? = null,
     val colorPrimaries: String? = null,
     val colorTransfer: String? = null,
-    val colorRange: String? = null
+    val colorRange: String? = null,
+    val codecName: String? = null
 )
 
 object VideoUtils {
@@ -69,7 +70,7 @@ object VideoUtils {
     fun probeVideo(path: String): VideoMeta? {
         return try {
             val cmd = "-v error -select_streams v:0 " +
-                "-show_entries stream=width,height,nb_frames,r_frame_rate,color_transfer,color_primaries,color_space,color_range " +
+                "-show_entries stream=width,height,nb_frames,r_frame_rate,color_transfer,color_primaries,color_space,color_range,codec_name " +
                 "-show_entries format=duration " +
                 "-of default=noprint_wrappers=1 \"$path\""
             val session = FFprobeKit.execute(cmd) ?: return null
@@ -100,7 +101,8 @@ object VideoUtils {
                 colorSpace = tag("color_space"),
                 colorPrimaries = tag("color_primaries"),
                 colorTransfer = tag("color_transfer"),
-                colorRange = tag("color_range")
+                colorRange = tag("color_range"),
+                codecName = tag("codec_name")
             )
         } catch (e: Exception) {
             null

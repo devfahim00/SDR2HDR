@@ -29,6 +29,33 @@ same defaults, same output behavior.
 - Output: `/sdcard/Movies/HDR10_Converted/output_HDR10[N].mp4`, auto-named to avoid overwrites,
   media-scanned on completion
 
+## v1.1 features
+
+- **Background conversion** — the conversion now runs inside a foreground service
+  (`ConvertService`, `dataSync` type) with a persistent progress notification; you can close the
+  app, and pause / resume / stop straight from the notification
+- **FFmpeg pause / resume** — pause cancels the current *segment* (written as fragmented MP4 so
+  the partial file stays valid), resume seeks the input to the pause point and encodes the next
+  segment; segments are merged losslessly (`-c copy` concat) into the final `+faststart` MP4
+- **Dolby Vision 8.1** (`dolby-vision-profile=8.1` RPU signaling, x265) and **HDR10+**
+  (`dhdr10-info` ST.2094-40 dynamic metadata) output options, auto-gated by a startup
+  capability probe (tiny test encode) so unsupported builds fall back to HDR10
+- **HLG output** (ARIB STD-B67 transfer) and **HLG / PQ input regrading** — enable *Allow HDR
+  input* in advanced mode to convert HDR sources instead of skipping them
+- **AV1 / VP9 encoding presets** (libaom / libvpx-vp9, 10-bit) in addition to HEVC
+- **Hardware encoding**: HEVC MediaCodec (10-bit Main10 where supported) and H.264 MediaCodec
+- **GPU decode**: MediaCodec (and experimental Vulkan) hwaccel, probe-gated
+- **Advanced mode**: Contrast / Gamma / Brightness / Temperature (K) / Tint sliders,
+  tone-mapping operators (Reinhard / Hable / Mobius — real `tonemap` filter at linear light for
+  HDR inputs, baked curve LUT for SDR), and an interactive **RGB curves editor** (monotone-cubic
+  spline, per-channel, exported to the ffmpeg `curves` filter)
+- **Before / after preview** — renders one graded frame (tonemapped for the phone screen) next
+  to the source frame before converting, and a **side-by-side compare** of source vs converted
+  file after conversion
+- **Multi-threading control** (`-threads` + x265 `pools`): Auto / 2 / 4 / 6 / 8
+- **In-app update check** against this repo's GitHub releases (banner + release notes +
+  one-tap APK download)
+
 The exact FFmpeg filter chain (identical to the script):
 
 ```
@@ -76,8 +103,11 @@ BT.709 profile and force-overwritten frame colour tags (`setparams`) before repo
 
 ## Differences vs the Termux script
 
-- No pause/resume (the script used SIGSTOP); the app offers Stop only
-- Everything else — filter chain, defaults, output naming, HDR skip, platform presets — is the same
+- Pause/resume is implemented differently (segmented fragmented-MP4 encoding + lossless concat,
+  because apps cannot SIGSTOP the bundled ffmpeg); the script used SIGSTOP
+- HDR input regrading, HLG / DV / HDR10+ / AV1 / VP9 / hardware encoders, GPU decode and the
+  advanced grading controls are app-only additions
+- Everything else — filter chain, defaults, output naming, platform presets — is the same
 
 ## Credits / licensing
 

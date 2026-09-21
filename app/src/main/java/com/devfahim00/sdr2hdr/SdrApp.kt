@@ -25,5 +25,8 @@ class SdrApp : Application() {
     override fun onCreate() {
         super.onCreate()
         AppCompatDelegate.setDefaultNightMode(ThemePrefs.mode(this))
+        // Probe the bundled FFmpeg's capabilities (MediaCodec, AV1, DV, HDR10+, filters)
+        // on a background thread so the settings UI can gate options on the results.
+        Capability.initAsync(this)
     }
 }

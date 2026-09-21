@@ -304,6 +304,16 @@
                         android:text="Play result"
                         android:visibility="gone"
                         app:icon="@drawable/ic_play" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_compare"
+                        style="@style/Widget.SDR2HDR.Button.Outlined"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Compare SDR vs HDR"
+                        android:visibility="gone"
+                        app:icon="@drawable/ic_compare" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -382,23 +392,42 @@
     </ScrollView>
 
     <!-- Bottom actions -->
-    <FrameLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/bg"
+        android:orientation="vertical"
         android:paddingStart="16dp"
         android:paddingTop="10dp"
         android:paddingEnd="16dp"
         android:paddingBottom="16dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_stop"
-            style="@style/Widget.SDR2HDR.Button.Stop"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Stop Process"
-            app:icon="@drawable/ic_stop"
-            app:iconGravity="textStart" />
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_pause"
+                style="@style/Widget.SDR2HDR.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Pause"
+                android:visibility="gone"
+                app:icon="@drawable/ic_pause" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_stop"
+                style="@style/Widget.SDR2HDR.Button.Stop"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:text="Stop Process"
+                app:icon="@drawable/ic_stop"
+                app:iconGravity="textStart" />
+        </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_done"
@@ -407,5 +436,5 @@
             android:layout_height="wrap_content"
             android:text="Done"
             android:visibility="gone" />
-    </FrameLayout>
+    </LinearLayout>
 </LinearLayout>

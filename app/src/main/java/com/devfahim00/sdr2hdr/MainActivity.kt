@@ -99,9 +99,15 @@ private class FolderAdapter(private val onFolderClick: (String) -> Unit) :
 
 class MainActivity : AppCompatActivity() {
 
+    private companion object {
+        const val PREFS = "sdr2hdr_prefs"
+        const val KEY_NOTIF_ASKED = "notif_permission_asked"
+    }
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var folderAdapter: FolderAdapter
     private val executor = Executors.newSingleThreadExecutor()
+    private var pendingRelease: UpdateChecker.Release? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -124,6 +130,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnManualPath.setOnClickListener { showManualPathDialog() }
         binding.btnGrant.setOnClickListener { requestStorage() }
         setupThemeToggle()
+        requestNotificationPermissionIfNeeded()
+        maybeCheckForUpdates()
+        binding.cardUpdate.setOnClickListener { showUpdateDialog() }
     }
 
     private fun isNight(): Boolean =
@@ -158,6 +167,73 @@ class MainActivity : AppCompatActivity() {
                 ThemePrefs.save(this, mode)
                 AppCompatDelegate.setDefaultNightMode(mode)
             }, 340)
+        }
+    }
+
+    // ── GitHub release update check ─────────────────────────────────────────
+
+    /** Silent background check (rate limited) against the repo's latest release. */
+    private fun maybeCheckForUpdates() {
+        if (!UpdateChecker.shouldAutoCheck(this)) return
+        executor.execute {
+            UpdateChecker.markChecked(this)
+            val release = UpdateChecker.check() ?: return@execute
+            val current = UpdateChecker.currentVersionName(this)
+            if (UpdateChecker.isNewer(current, release.tag)) {
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    pendingRelease = release
+                    binding.textUpdateSub.text = "${release.tag} · tap to view the release"
+                    binding.cardUpdate.visibility = View.VISIBLE
+                }
+            }
+        }
+    }
+
+    private fun showUpdateDialog() {
+        val release = pendingRelease ?: run {
+            binding.cardUpdate.visibility = View.GONE
+            return
+        }
+        val notes = release.notes.ifBlank { "No release notes." }.take(2000)
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle("Update available · ${release.tag}")
+            .setMessage(
+                "Installed: ${UpdateChecker.currentVersionName(this)}\n\n$notes"
+            )
+            .setNegativeButton("Later", null)
+            .setNeutralButton("GitHub") { _, _ -> openUrl(release.pageUrl) }
+        if (release.apkUrl != null) {
+            builder.setPositiveButton("Download APK") { _, _ -> openUrl(release.apkUrl!!) }
+        } else {
+            builder.setPositiveButton("View release") { _, _ -> openUrl(release.pageUrl) }
+        }
+        builder.show()
+    }
+
+    private fun openUrl(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (_: Exception) {
+            Toast.makeText(this, "No browser found", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** Android 13+ needs an explicit grant before the conversion notification shows. */
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            val asked = getSharedPreferences(PREFS, MODE_PRIVATE)
+                .getBoolean(KEY_NOTIF_ASKED, false)
+            val granted = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!asked && !granted) {
+                getSharedPreferences(PREFS, MODE_PRIVATE)
+                    .edit().putBoolean(KEY_NOTIF_ASKED, true).apply()
+                ActivityCompat.requestPermissions(
+                    this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2001
+                )
+            }
         }
     }
 

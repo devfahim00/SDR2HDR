@@ -103,6 +103,67 @@
         </FrameLayout>
     </LinearLayout>
 
+    <!-- GitHub release update banner -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_update"
+        style="@style/Widget.SDR2HDR.Card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/blue_light"
+        app:strokeColor="@color/blue">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_download"
+                android:tint="@color/blue" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Update available"
+                    android:textColor="@color/blue"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:id="@+id/text_update_sub"
+                    style="@style/Text.MonoDim"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Tap to view the latest release"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/blue" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <!-- Permission card -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/permission_panel"
