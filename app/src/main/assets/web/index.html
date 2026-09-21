@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SDR2HDR · Remote</title>
+<style>
+  :root {
+    --bg: #0d1016;
+    --surface: #141822;
+    --surface2: #1a1f2b;
+    --border: rgba(255,255,255,.09);
+    --text: #f2f4f8;
+    --dim: #8b93a4;
+    --blue: #1c75fd;
+    --blue-soft: rgba(28,117,253,.14);
+    --green: #34c759;
+    --red: #eb3741;
+    --amber: #ff9500;
+    --radius: 16px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, Inter, sans-serif; }
+  body { min-height: 100vh; padding: 20px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+  .logo { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg,#1c75fd,#7e3cff); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: -.5px; }
+  h1 { font-size: 24px; letter-spacing: -.3px; }
+  .sub { color: var(--dim); font-size: 12px; font-family: var(--mono); margin-top: 3px; }
+  .spacer { flex: 1; }
+  .pill-btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 9px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .pill-btn:hover { border-color: rgba(28,117,253,.5); }
+  .pill-btn.danger { color: var(--red); }
+
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--dim); margin-bottom: 12px; font-family: var(--mono); }
+
+  .search { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 12px; padding: 10px 12px; font-size: 13px; outline: none; margin-bottom: 10px; }
+  .search:focus { border-color: rgba(28,117,253,.55); }
+
+  #files { max-height: 460px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .file { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; cursor: pointer; }
+  .file:hover { background: var(--surface2); }
+  .file.sel { border-color: var(--blue); background: var(--blue-soft); }
+  .fname { font-size: 13px; font-weight: 600; word-break: break-all; }
+  .fmeta { font-size: 10.5px; color: var(--dim); font-family: var(--mono); margin-top: 4px; }
+
+  .section { margin-bottom: 18px; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); font-family: var(--mono); margin-bottom: 8px; display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 20px; padding: 7px 13px; font-size: 12px; font-weight: 600; cursor: pointer; user-select: none; }
+  .chip.on { background: var(--text); color: #0d1016; border-color: var(--text); }
+  .chip.def { border-color: rgba(28,117,253,.55); }
+  .chip.def:not(.on) { color: #7fb0ff; }
+  .chip[disabled] { opacity: .35; cursor: not-allowed; }
+  .hint { font-size: 10.5px; color: var(--dim); font-family: var(--mono); margin-top: 7px; }
+
+  .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+  @media (max-width: 640px) { .sliders { grid-template-columns: 1fr; } }
+  .srow .top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .srow .name { font-size: 12.5px; font-weight: 600; }
+  .srow .val { font-family: var(--mono); font-size: 12px; color: #7fb0ff; }
+  input[type=range] { width: 100%; accent-color: var(--blue); }
+  .check { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 4px 0; cursor: pointer; }
+  .check input { accent-color: var(--blue); width: 16px; height: 16px; }
+
+  #startBtn { width: 100%; margin-top: 6px; background: var(--blue); color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: 16px; padding: 15px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  #startBtn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .status { margin-top: 16px; }
+  .bar { height: 10px; background: var(--surface2); border-radius: 6px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0%; background: linear-gradient(90deg,#1c75fd,#34c759); border-radius: 6px; transition: width .6s ease; }
+  .statline { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 9px; gap: 10px; flex-wrap: wrap; }
+  .phase { font-weight: 700; }
+  .phase.RUNNING, .phase.PROBING, .phase.FINALIZING { color: var(--blue); }
+  .phase.PAUSED { color: var(--amber); }
+  .phase.DONE { color: var(--green); }
+  .phase.FAILED, .phase.CANCELLED { color: var(--red); }
+  .msg { font-size: 12px; color: var(--text); margin-top: 8px; word-break: break-all; }
+  .outpath { font-family: var(--mono); font-size: 11px; color: var(--green); margin-top: 6px; word-break: break-all; }
+  .ctrls { display: flex; gap: 8px; margin-top: 12px; }
+  .ctrls button { flex: 1; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 12px; padding: 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .ctrls button:disabled { opacity: .35; cursor: not-allowed; }
+  .ctrls .pause { color: var(--amber); }
+  .ctrls .stop { color: var(--red); }
+
+  .curves-wrap { margin-top: 8px; }
+  canvas#curves { width: 100%; max-width: 340px; aspect-ratio: 1/1; background: #0a0d12; border: 1px solid var(--border); border-radius: 12px; touch-action: none; cursor: crosshair; }
+  .curve-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); background: #1a1f2b; border: 1px solid var(--border); color: var(--text); border-radius: 12px; padding: 10px 18px; font-size: 12.5px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 90vw; }
+  .toast.show { opacity: 1; }
+  .empty { color: var(--dim); font-size: 12.5px; padding: 18px 4px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">HDR</div>
+    <div>
+      <h1>SDR2HDR <span style="color:var(--dim);font-size:14px;font-family:var(--mono)">remote</span></h1>
+      <div class="sub" id="devInfo">connecting…</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="pill-btn danger" id="stopServerBtn">Stop server</button>
+  </header>
+
+  <div class="grid">
+    <!-- left: file picker -->
+    <div class="card">
+      <h2>Pick a video</h2>
+      <input class="search" id="search" placeholder="Search videos…" autocomplete="off">
+      <div id="files"><div class="empty">Loading device videos…</div></div>
+    </div>
+
+    <!-- right: controls -->
+    <div class="card">
+      <h2>Conversion settings</h2>
+      <div id="selected" class="file" style="display:none; margin-bottom:16px;">
+        <div class="fname"></div>
+        <div class="fmeta"></div>
+      </div>
+
+      <div class="section">
+        <span class="label">HDR format</span>
+        <div class="chips" id="gFormat"></div>
+      </div>
+      <div class="section">
+        <span class="label">Resolution</span>
+        <div class="chips" id="gRes"></div>
+      </div>
+      <div class="section">
+        <span class="label">Dynamic metadata</span>
+        <div class="chips" id="gDyn"></div>
+      </div>
+      <div class="section">
+        <span class="label">Codec</span>
+        <div class="chips" id="gCodec"></div>
+      </div>
+      <div class="section">
+        <span class="label">GPU decode</span>
+        <div class="chips" id="gGpu"></div>
+      </div>
+      <div class="section">
+        <span class="label">Threads</span>
+        <div class="chips" id="gThreads"></div>
+      </div>
+      <div class="section">
+        <span class="label">Encoder speed</span>
+        <div class="chips" id="gPreset"></div>
+      </div>
+      <div class="section">
+        <span class="label">Tone mapping</span>
+        <div class="chips" id="gTone"></div>
+      </div>
+
+      <div class="section sliders" id="basicSliders">
+        <div class="srow"><div class="top"><span class="name">Exposure</span><span class="val" id="vExp"></span></div><input type="range" id="sExp" min="-3" max="2" step="0.05" value="0.25"></div>
+        <div class="srow"><div class="top"><span class="name">Highlight (nits)</span><span class="val" id="vHl"></span></div><input type="range" id="sHl" min="100" max="400" step="10" value="240"></div>
+        <div class="srow"><div class="top"><span class="name">Saturation</span><span class="val" id="vSat"></span></div><input type="range" id="sSat" min="0" max="2" step="0.05" value="1.25"></div>
+        <div class="srow"><div class="top"><span class="name">Sharpness</span><span class="val" id="vSharp"></span></div><input type="range" id="sSharp" min="0" max="100" step="1" value="0"></div>
+      </div>
+
+      <div class="section">
+        <span class="label">Advanced grading</span>
+        <div class="chips" id="gAdv" style="margin-bottom:12px">
+          <div class="chip def" data-on="0" id="advToggle">Show advanced controls</div>
+        </div>
+        <div class="sliders" id="advSliders" style="display:none">
+          <div class="srow"><div class="top"><span class="name">Contrast</span><span class="val" id="vCon"></span></div><input type="range" id="sCon" min="0.5" max="2" step="0.05" value="1"></div>
+          <div class="srow"><div class="top"><span class="name">Gamma</span><span class="val" id="vGam"></span></div><input type="range" id="sGam" min="0.5" max="2" step="0.05" value="1"></div>
+          <div class="srow"><div class="top"><span class="name">Brightness</span><span class="val" id="vBri"></span></div><input type="range" id="sBri" min="-0.25" max="0.25" step="0.01" value="0"></div>
+          <div class="srow"><div class="top"><span class="name">Temperature (K)</span><span class="val" id="vTemp"></span></div><input type="range" id="sTemp" min="2500" max="8000" step="100" value="6500"></div>
+          <div class="srow"><div class="top"><span class="name">Tint</span><span class="val" id="vTint"></span></div><input type="range" id="sTint" min="-0.25" max="0.25" step="0.01" value="0"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <span class="label">RGB curves</span>
+        <div class="chips" id="gCurveCh" style="margin-bottom:10px"></div>
+        <div class="curves-wrap">
+          <canvas id="curves" width="340" height="340"></canvas>
+          <div class="curve-tools">
+            <span class="hint">tap: add · drag: move · double-tap: delete</span>
+            <button class="pill-btn" id="curveReset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <label class="check"><input type="checkbox" id="cHdrIn"> Allow HDR input (regrade instead of refusing)</label>
+
+      <button id="startBtn">Convert to HDR10</button>
+
+      <div class="status" id="statusBox" style="display:none">
+        <div class="bar"><div id="barFill"></div></div>
+        <div class="statline">
+          <span class="phase" id="stPhase">—</span>
+          <span id="stPct">0%</span>
+          <span id="stFps"></span>
+          <span id="stEta"></span>
+        </div>
+        <div class="msg" id="stMsg"></div>
+        <div class="outpath" id="stOut"></div>
+        <div class="ctrls">
+          <button class="pause" id="btnPause">Pause</button>
+          <button id="btnResume">Resume</button>
+          <button class="stop" id="btnStop">Stop</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const state = {
+  file: null,
+  files: [],
+  caps: null,
+  adv: false,
+  curves: { master: [[0,0],[1,1]], r: [[0,0],[1,1]], g: [[0,0],[1,1]], b: [[0,0],[1,1]] },
+  curveCh: "master",
+  polling: null,
+};
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 2600);
+}
+const fmtMB = (b) => (b / 1048576).toFixed(1) + " MB";
+const fmtDur = (ms) => {
+  if (!ms) return "";
+  const s = Math.round(ms / 1000);
+  return s >= 3600 ? `${(s/3600)|0}:${String((s%3600/60)|0).padStart(2,"0")}:${String(s%60).padStart(2,"0")}` : `${(s/60)|0}:${String(s%60).padStart(2,"0")}`;
+};
+
+// ── chip groups ───────────────────────────────────────────────────────────────
+const GROUPS = {
+  gFormat: { def: "pq", map: { pq: "HDR10 · PQ", hlg: "HLG · BT.2100" }, key: "format" },
+  gRes:    { def: "source", map: { source: "Original", "720p": "720p", "1080p": "1080p", "2k": "2K", "4k": "4K", "8k": "8K" }, key: "resolution" },
+  gDyn:    { def: "none", map: { none: "None", hdr10plus: "HDR10+", dv81: "Dolby Vision 8.1" }, key: "dyn" },
+  gCodec:  { def: "hevc", map: { hevc: "HEVC · x265", hevchw: "HEVC · MediaCodec", h264hw: "H.264 · MediaCodec", vp9: "VP9", av1: "AV1" }, key: "codec" },
+  gGpu:    { def: "off", map: { off: "CPU", mediacodec: "MediaCodec", vulkan: "Vulkan" }, key: "gpu" },
+  gThreads:{ def: "0", map: { "0": "Auto", "2": "2", "4": "4", "6": "6", "8": "8" }, key: "threads" },
+  gPreset: { def: "fast", map: { ultrafast: "Ultrafast", fast: "Fast", medium: "Medium", slow: "Slow" }, key: "preset" },
+  gTone:   { def: "none", map: { none: "Linear", reinhard: "Reinhard", hable: "Hable", mobius: "Mobius" }, key: "tonemap" },
+};
+const sel = {};
+for (const [gid, g] of Object.entries(GROUPS)) {
+  sel[g.key] = g.def;
+  const box = $(gid);
+  for (const [k, label] of Object.entries(g.map)) {
+    const el = document.createElement("div");
+    el.className = "chip" + (k === g.def ? " def" : "") + (k === g.def ? " on" : "");
+    el.textContent = label;
+    el.dataset.k = k;
+    el.onclick = () => {
+      if (el.getAttribute("disabled")) return;
+      sel[g.key] = k;
+      box.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === el));
+      if (g.key === "format") $("startBtn").textContent = k === "hlg" ? "Convert to HLG" : "Convert to HDR10";
+    };
+    box.appendChild(el);
+    g.map[k] = g.map[k]; // no-op
+    (g._els || (g._els = {}))[k] = el;
+  }
+}
+
+// capability gating (hevc_hw/av1/vp9/mediacodec/vulkan/dv/hdr10+ not always present)
+function applyCaps(caps) {
+  state.caps = caps;
+  const G = GROUPS;
+  const disable = (gid, key, ok) => { const el = G[gid]._els[key]; if (!ok) el.setAttribute("disabled", ""); };
+  disable("gCodec", "av1", caps.av1);
+  disable("gCodec", "hevchw", caps.hevcHw);
+  disable("gCodec", "h264hw", caps.h264Hw);
+  disable("gCodec", "vp9", caps.vp9);
+  disable("gGpu", "mediacodec", caps.mediacodec);
+  disable("gGpu", "vulkan", caps.vulkan);
+  disable("gDyn", "dv81", !!caps.dolbyVision);
+  disable("gDyn", "hdr10plus", !!caps.hdr10plus);
+}
+
+// ── sliders ──────────────────────────────────────────────────────────────────
+function bindSlider(sid, vid, fmt) {
+  const s = $(sid), v = $(vid);
+  const upd = () => { v.textContent = fmt(parseFloat(s.value)); };
+  s.addEventListener("input", upd);
+  upd();
+}
+bindSlider("sExp", "vExp", v => v.toFixed(2));
+bindSlider("sHl", "vHl", v => v.toFixed(0));
+bindSlider("sSat", "vSat", v => v.toFixed(2));
+bindSlider("sSharp", "vSharp", v => (v | 0) === 0 ? "Off" : String(v | 0));
+bindSlider("sCon", "vCon", v => v.toFixed(2));
+bindSlider("sGam", "vGam", v => v.toFixed(2));
+bindSlider("sBri", "vBri", v => v.toFixed(2));
+bindSlider("sTemp", "vTemp", v => v.toFixed(0));
+bindSlider("sTint", "vTint", v => v.toFixed(2));
+
+$("advToggle").onclick = () => {
+  state.adv = !state.adv;
+  $("advSliders").style.display = state.adv ? "grid" : "none";
+  $("advToggle").textContent = state.adv ? "Hide advanced controls" : "Show advanced controls";
+  $("advToggle").classList.toggle("on", state.adv);
+};
+
+// ── curves editor ────────────────────────────────────────────────────────────
+const CH_COLORS = { master: "#f2f4f8", r: "#eb5d6b", g: "#34c759", b: "#1c75fd" };
+const CH_LABELS = { master: "Master", r: "R", g: "G", b: "B" };
+for (const ch of ["master", "r", "g", "b"]) {
+  const el = document.createElement("div");
+  el.className = "chip" + (ch === "master" ? " def on" : "");
+  el.textContent = CH_LABELS[ch];
+  el.onclick = () => {
+    state.curveCh = ch;
+    $("gCurveCh").querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === el));
+    drawCurves();
+  };
+  $("gCurveCh").appendChild(el);
+}
+const cv = $("curves"), cx = cv.getContext("2d");
+const PAD = 22;
+function px(x) { return PAD + (cv.width - 2 * PAD) * x; }
+function py(y) { return cv.height - PAD - (cv.height - 2 * PAD) * y; }
+function ix(pxv) { return Math.min(1, Math.max(0, (pxv - PAD) / (cv.width - 2 * PAD))); }
+function iy(pyv) { return Math.min(1, Math.max(0, (cv.height - PAD - pyv) / (cv.height - 2 * PAD))); }
+function drawCurves() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.strokeStyle = "rgba(255,255,255,.08)";
+  for (let i = 1; i < 4; i++) {
+    cx.beginPath(); cx.moveTo(px(i / 4), py(0)); cx.lineTo(px(i / 4), py(1)); cx.stroke();
+    cx.beginPath(); cx.moveTo(px(0), py(i / 4)); cx.lineTo(px(1), py(i / 4)); cx.stroke();
+  }
+  cx.setLineDash([5, 5]);
+  cx.strokeStyle = "rgba(255,255,255,.22)";
+  cx.beginPath(); cx.moveTo(px(0), py(0)); cx.lineTo(px(1), py(1)); cx.stroke();
+  cx.setLineDash([]);
+  const act = state.curves[state.curveCh];
+  const neutral = (pts) => pts.length === 2 && pts[0][0] === 0 && pts[0][1] === 0 && pts[1][0] === 1 && pts[1][1] === 1;
+  for (const [ch, pts] of Object.entries(state.curves)) {
+    if (ch === state.curveCh) continue;
+    if (neutral(pts) && ch !== "master") continue;
+    strokeCurve(pts, CH_COLORS[ch], 0.28);
+  }
+  if (state.curveCh !== "master") strokeCurve(state.curves.master, CH_COLORS.master, 0.22);
+  strokeCurve(act, CH_COLORS[state.curveCh], 1);
+  for (const [x, y] of act) {
+    cx.fillStyle = "#fff";
+    cx.beginPath(); cx.arc(px(x), py(y), 6, 0, 7); cx.fill();
+    cx.strokeStyle = CH_COLORS[state.curveCh]; cx.lineWidth = 2; cx.stroke();
+  }
+}
+function strokeCurve(pts, color, alpha) {
+  cx.globalAlpha = alpha;
+  cx.strokeStyle = color; cx.lineWidth = 2.4;
+  cx.beginPath();
+  const s = sample(pts, 60);
+  cx.moveTo(px(s[0][0]), py(s[0][1]));
+  for (let i = 1; i < s.length; i++) cx.lineTo(px(s[i][0]), py(s[i][1]));
+  cx.stroke();
+  cx.globalAlpha = 1;
+}
+function sample(pts, steps) { // monotone-ish: just dense linear interpolation of a Catmull-Rom
+  if (pts.length < 2) return pts;
+  const out = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    for (let t = 0; t < steps; t++) {
+      const u = t / steps, u2 = u * u, u3 = u2 * u;
+      const x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * u + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * u2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * u3);
+      const y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * u + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * u2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * u3);
+      out.push([Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))]);
+    }
+  }
+  out.push(pts[pts.length - 1].slice());
+  return out;
+}
+let dragIdx = -1;
+function evtPos(e) {
+  const r = cv.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return [(t.clientX - r.left) * (cv.width / r.width), (t.clientY - r.top) * (cv.height / r.height)];
+}
+function nearest(x, y) {
+  const pts = state.curves[state.curveCh];
+  let best = -1, bd = 1e9;
+  pts.forEach((p, i) => {
+    const d = (px(p[0]) - x) ** 2 + (py(p[1]) - y) ** 2;
+    if (d < bd) { bd = d; best = i; }
+  });
+  return bd < 26 * 26 ? best : -1;
+}
+function cvDown(e) {
+  e.preventDefault();
+  const [x, y] = evtPos(e);
+  const pts = state.curves[state.curveCh];
+  const n = nearest(x, y);
+  if (n >= 0) dragIdx = n;
+  else if (pts.length < 6) {
+    const nx = Math.min(.98, Math.max(.02, ix(x)));
+    let at = pts.findIndex(p => p[0] > nx);
+    if (at <= 0) at = pts.length - 1;
+    pts.splice(at, 0, [nx, iy(y)]);
+    dragIdx = at;
+  }
+  drawCurves();
+}
+function cvMove(e) {
+  if (dragIdx < 0) return;
+  e.preventDefault();
+  const [x, y] = evtPos(e);
+  const pts = state.curves[state.curveCh];
+  const locked = dragIdx === 0 || dragIdx === pts.length - 1;
+  const lo = dragIdx > 0 ? pts[dragIdx - 1][0] + 0.01 : 0;
+  const hi = dragIdx < pts.length - 1 ? pts[dragIdx + 1][0] - 0.01 : 1;
+  const nx = locked ? pts[dragIdx][0] : Math.min(hi, Math.max(lo, ix(x)));
+  pts[dragIdx] = [nx, iy(y)];
+  drawCurves();
+}
+function cvUp() { dragIdx = -1; }
+function cvDbl(e) {
+  const [x, y] = evtPos(e);
+  const n = nearest(x, y);
+  const pts = state.curves[state.curveCh];
+  if (n > 0 && n < pts.length - 1) { pts.splice(n, 1); drawCurves(); }
+}
+cv.addEventListener("mousedown", cvDown); cv.addEventListener("mousemove", cvMove);
+window.addEventListener("mouseup", cvUp);
+cv.addEventListener("touchstart", cvDown, { passive: false });
+cv.addEventListener("touchmove", cvMove, { passive: false });
+cv.addEventListener("touchend", cvUp);
+cv.addEventListener("dblclick", cvDbl);
+$("curveReset").onclick = () => { state.curves[state.curveCh] = [[0, 0], [1, 1]]; drawCurves(); };
+drawCurves();
+
+// ── file list ────────────────────────────────────────────────────────────────
+async function loadFiles() {
+  try {
+    const j = await api("/api/files");
+    state.files = j.files || [];
+    renderFiles("");
+  } catch (e) {
+    $("files").innerHTML = `<div class="empty">Could not list videos: ${e.message}</div>`;
+  }
+}
+function renderFiles(q) {
+  const box = $("files");
+  const list = state.files.filter(f => f.name.toLowerCase().includes(q.toLowerCase()));
+  if (!list.length) { box.innerHTML = `<div class="empty">No videos found.</div>`; return; }
+  box.innerHTML = "";
+  for (const f of list) {
+    const el = document.createElement("div");
+    el.className = "file" + (state.file && state.file.path === f.path ? " sel" : "");
+    el.innerHTML = `<div class="fname"></div><div class="fmeta"></div>`;
+    el.querySelector(".fname").textContent = f.name;
+    el.querySelector(".fmeta").textContent =
+      [fmtMB(f.size), f.width && f.height ? `${f.width}x${f.height}` : "", fmtDur(f.duration)].filter(Boolean).join("  ·  ");
+    el.onclick = () => selectFile(f);
+    box.appendChild(el);
+  }
+}
+function selectFile(f) {
+  state.file = f;
+  const s = $("selected");
+  s.style.display = "block";
+  s.querySelector(".fname").textContent = f.name;
+  s.querySelector(".fmeta").textContent = f.path;
+  renderFiles($("search").value);
+}
+$("search").addEventListener("input", e => renderFiles(e.target.value));
+
+// ── start / control ──────────────────────────────────────────────────────────
+function buildConfig() {
+  const curves = {};
+  for (const [ch, pts] of Object.entries(state.curves)) {
+    if (pts.length === 2 && pts[0][0] === 0 && pts[0][1] === 0 && pts[1][0] === 1 && pts[1][1] === 1) continue;
+    curves[ch] = pts.map(p => [+p[0].toFixed(4), +p[1].toFixed(4)]);
+  }
+  return {
+    exposure: +$("sExp").value,
+    highlight: +$("sHl").value,
+    saturation: +$("sSat").value,
+    preset: sel.preset,
+    platform: "none",
+    strip: false,
+    format: sel.format,
+    dyn: sel.dyn,
+    codec: sel.codec,
+    gpu: sel.gpu,
+    threads: +sel.threads,
+    contrast: +$("sCon").value,
+    gamma: +$("sGam").value,
+    brightness: +$("sBri").value,
+    temperature: +$("sTemp").value,
+    tint: +$("sTint").value,
+    tonemap: sel.tonemap,
+    allowHdrInput: $("cHdrIn").checked,
+    resolution: sel.resolution,
+    sharpness: +$("sSharp").value,
+    curves: curves,
+  };
+}
+$("startBtn").onclick = async () => {
+  if (!state.file) { toast("Pick a video first"); return; }
+  try {
+    await api("/api/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: state.file.path, config: buildConfig() }),
+    });
+    toast("Conversion started");
+    $("statusBox").style.display = "block";
+    startPolling();
+  } catch (e) { toast(e.message); }
+};
+$("btnPause").onclick = () => api("/api/pause", { method: "POST" }).catch(e => toast(e.message));
+$("btnResume").onclick = () => api("/api/resume", { method: "POST" }).catch(e => toast(e.message));
+$("btnStop").onclick = () => api("/api/stop", { method: "POST" }).catch(e => toast(e.message));
+$("stopServerBtn").onclick = async () => {
+  try { await api("/api/stop_server", { method: "POST" }); } catch (_) {}
+  toast("Server stopped — you can close this tab");
+};
+
+// ── status polling ───────────────────────────────────────────────────────────
+const LIVE = ["PROBING", "RUNNING", "PAUSED", "FINALIZING"];
+function startPolling() {
+  if (state.polling) return;
+  state.polling = setInterval(refreshStatus, 1000);
+}
+async function refreshStatus() {
+  try {
+    const s = await api("/api/state");
+    $("statusBox").style.display = "block";
+    $("barFill").style.width = s.progress + "%";
+    $("stPhase").textContent = s.phase;
+    $("stPhase").className = "phase " + s.phase;
+    $("stPct").textContent = s.progress + "%";
+    $("stFps").textContent = s.fps && s.fps !== "0.0" ? s.fps + " fps" : "";
+    $("stEta").textContent = s.etaSec > 0 ? "ETA " + fmtDur(s.etaSec * 1000) : "";
+    $("stMsg").textContent = s.message || "";
+    $("stOut").textContent = s.output ? "Saved: " + s.output : "";
+    $("btnPause").disabled = s.phase !== "RUNNING";
+    $("btnResume").disabled = s.phase !== "PAUSED";
+    $("btnStop").disabled = !LIVE.includes(s.phase);
+    if (!LIVE.includes(s.phase) && state.polling) {
+      clearInterval(state.polling);
+      state.polling = null;
+      setTimeout(loadFiles, 1500);
+    }
+  } catch (_) { /* server stopped */ }
+}
+
+// ── boot ─────────────────────────────────────────────────────────────────────
+(async function boot() {
+  let caps = null;
+  try {
+    const info = await api("/api/info");
+    $("devInfo").textContent = `${info.device} · SDR2HDR ${info.version} · ${info.serverUrl || ""}`;
+    caps = info.caps;
+  } catch (_) {}
+  applyCaps(caps || { av1: true, hevcHw: true, h264Hw: true, vp9: true, mediacodec: true, vulkan: true, dolbyVision: true, hdr10plus: true });
+  await loadFiles();
+  refreshStatus().then(() => { if (LIVE.includes(($("stPhase").textContent || ""))) startPolling(); });
+})();
+</script>
+</body>
+</html>

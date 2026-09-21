@@ -21,6 +21,23 @@ object ThemePrefs {
     }
 }
 
+/** Misc app-level preferences (settings sheet toggles). */
+object AppPrefs {
+    private const val FILE = "sdr2hdr_prefs"
+    private const val KEY_HIDE_FOLDERS = "hide_folder_explorer"
+
+    fun hideFolderExplorer(context: Context): Boolean =
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getBoolean(KEY_HIDE_FOLDERS, false)
+
+    fun setHideFolderExplorer(context: Context, value: Boolean) {
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_HIDE_FOLDERS, value)
+            .apply()
+    }
+}
+
 class SdrApp : Application() {
     override fun onCreate() {
         super.onCreate()

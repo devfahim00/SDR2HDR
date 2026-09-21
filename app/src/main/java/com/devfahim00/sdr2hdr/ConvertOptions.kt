@@ -48,6 +48,20 @@ enum class GpuDecode(val key: String, val label: String) {
     }
 }
 
+/** Output frame size: keep the source geometry or rescale (up or down) to a standard. */
+enum class OutputResolution(val key: String, val label: String, val w: Int, val h: Int) {
+    SOURCE("source", "Original", 0, 0),
+    HD("720p", "720p", 1280, 720),
+    FHD("1080p", "1080p", 1920, 1080),
+    QHD("2k", "2K", 2560, 1440),
+    UHD("4k", "4K", 3840, 2160),
+    UHD8K("8k", "8K", 7680, 4320);
+
+    companion object {
+        fun fromKey(k: String?): OutputResolution = entries.firstOrNull { it.key == k } ?: SOURCE
+    }
+}
+
 /** Tone-mapping operator applied while converting. */
 enum class ToneMapOp(val key: String, val label: String) {
     NONE("none", "Linear"),
@@ -84,6 +98,9 @@ data class ConvertConfig(
     val tint: Double = 0.0,
     val toneMap: ToneMapOp = ToneMapOp.NONE,
     val allowHdrInput: Boolean = false,
+    val resolution: OutputResolution = OutputResolution.SOURCE,
+    /** 0 = off; 1..100 maps to an unsharp luma amount of 0.00..1.50 */
+    val sharpness: Int = 0,
     /** channel key ("master","r","g","b") -> normalised control points (x,y in 0..1) */
     val curves: Map<String, List<Pair<Double, Double>>> = emptyMap()
 ) {
@@ -114,6 +131,8 @@ data class ConvertConfig(
         o.put("tint", tint)
         o.put("tonemap", toneMap.key)
         o.put("allowHdrInput", allowHdrInput)
+        o.put("resolution", resolution.key)
+        o.put("sharpness", sharpness)
         if (curves.isNotEmpty()) {
             val c = JSONObject()
             for ((k, pts) in curves) {
@@ -168,6 +187,8 @@ data class ConvertConfig(
                     tint = o.optDouble("tint", 0.0),
                     toneMap = ToneMapOp.fromKey(o.optString("tonemap")),
                     allowHdrInput = o.optBoolean("allowHdrInput", false),
+                    resolution = OutputResolution.fromKey(o.optString("resolution")),
+                    sharpness = o.optInt("sharpness", 0).coerceIn(0, 100),
                     curves = curves
                 )
             } catch (_: Exception) {

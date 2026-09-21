@@ -60,6 +60,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun brightness(): Double = (binding.slBrightness.progress - 25) * 0.01
     private fun temperatureK(): Int = 2500 + binding.slTemperature.progress * 100
     private fun tint(): Double = (binding.slTint.progress - 25) * 0.01
+    private fun sharpness(): Int = binding.slSharpness.progress
 
     private fun fmt2(v: Double): String = String.format(Locale.US, "%.2f", v)
 
@@ -135,6 +136,7 @@ class SettingsActivity : AppCompatActivity() {
         bindSlider(binding.slBrightness)
         bindSlider(binding.slTemperature)
         bindSlider(binding.slTint)
+        bindSlider(binding.slSharpness)
         refreshValues()
 
         // Advanced mode reveal
@@ -148,6 +150,7 @@ class SettingsActivity : AppCompatActivity() {
 
         // Output format / dynamic metadata / codec / gpu / threads / tone-map chips
         binding.groupFormat.setOnCheckedStateChangeListener { _, _ -> updateHints(); updateStartLabel() }
+        binding.groupResolution.setOnCheckedStateChangeListener { _, _ -> updateHints() }
         binding.groupDyn.setOnCheckedStateChangeListener { _, _ -> updateHints() }
         binding.groupCodec.setOnCheckedStateChangeListener { _, _ -> updateDynGating(); updateHints() }
         binding.groupGpu.setOnCheckedStateChangeListener { _, _ -> updateHints() }
@@ -181,10 +184,12 @@ class SettingsActivity : AppCompatActivity() {
             binding.slBrightness.progress = 25
             binding.slTemperature.progress = 40
             binding.slTint.progress = 25
+            binding.slSharpness.progress = 0
             binding.groupTonemap.check(R.id.tm_none)
             binding.switchHdrInput.isChecked = false
             binding.curvesView.resetAll()
             binding.groupFormat.check(R.id.fmt_pq)
+            binding.groupResolution.check(R.id.res_source)
             binding.groupDyn.check(R.id.dyn_none)
             binding.groupCodec.check(R.id.codec_hevc)
             binding.groupGpu.check(R.id.gpu_off)
@@ -259,6 +264,14 @@ class SettingsActivity : AppCompatActivity() {
             R.id.gpu_vulkan -> GpuDecode.VULKAN
             else -> GpuDecode.OFF
         }
+        val resolution = when (binding.groupResolution.checkedChipId) {
+            R.id.res_720 -> OutputResolution.HD
+            R.id.res_1080 -> OutputResolution.FHD
+            R.id.res_2k -> OutputResolution.QHD
+            R.id.res_4k -> OutputResolution.UHD
+            R.id.res_8k -> OutputResolution.UHD8K
+            else -> OutputResolution.SOURCE
+        }
         val threads = when (binding.groupThreads.checkedChipId) {
             R.id.thr_2 -> 2
             R.id.thr_4 -> 4
@@ -291,6 +304,8 @@ class SettingsActivity : AppCompatActivity() {
             tint = tint(),
             toneMap = toneMap,
             allowHdrInput = binding.switchHdrInput.isChecked,
+            resolution = resolution,
+            sharpness = sharpness(),
             curves = curvesMap
         )
     }
@@ -366,6 +381,15 @@ class SettingsActivity : AppCompatActivity() {
                 if (x265 && Capability.dolbyVisionX265) "Dolby Vision RPU 8.1 · HDR10-compatible fallback"
                 else "Requires software x265 built with Dolby Vision"
             else -> "Static HDR10 signalling only"
+        }
+
+        binding.textResHint.text = when (binding.groupResolution.checkedChipId) {
+            R.id.res_720 -> "Down/upscale to 1280x720 · lanczos · aspect preserved"
+            R.id.res_1080 -> "Down/upscale to 1920x1080 · lanczos · aspect preserved"
+            R.id.res_2k -> "Upscale to 2560x1440 (2K) · lanczos · aspect preserved"
+            R.id.res_4k -> "Upscale to 3840x2160 (4K UHD) · lanczos · aspect preserved"
+            R.id.res_8k -> "Upscale to 7680x4320 (8K) · very slow, huge files"
+            else -> "Keep the source resolution (default)"
         }
 
         binding.textCodecHint.text = when (binding.groupCodec.checkedChipId) {
@@ -541,6 +565,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.valBrightness.text = fmt2(brightness())
         binding.valTemperature.text = temperatureK().toString()
         binding.valTint.text = fmt2(tint())
+        binding.valSharpness.text = if (sharpness() == 0) "Off" else sharpness().toString()
     }
 
     override fun onDestroy() {

@@ -274,6 +274,20 @@ object FfmpegEngine {
         fs += "zscale=rin=full:min=gbr:pin=${source.primaries}:tin=$tinAfter" +
             ":primaries=bt2020:transfer=$targetTransfer:matrix=bt2020nc:npl=$npl"
 
+        // Resolution change (upscale / downscale) right before the output pixel format,
+        // so grading runs at source resolution and only the final frames are rescaled.
+        if (config.resolution != OutputResolution.SOURCE) {
+            val r = config.resolution
+            fs += "scale=${r.w}:${r.h}:force_original_aspect_ratio=decrease" +
+                ":force_divisible_by=2:flags=lanczos"
+        }
+
+        // Detail enhancement (luma-only sharpening; chroma left untouched to avoid noise).
+        if (config.sharpness > 0) {
+            val amount = String.format(Locale.US, "%.2f", config.sharpness / 100.0 * 1.5)
+            fs += "unsharp=5:5:$amount:5:5:0.0"
+        }
+
         fs += "format=$finalPixFmt"
         return fs.joinToString(",")
     }
@@ -356,7 +370,12 @@ object FfmpegEngine {
     }
 
     private fun hwBitrateMbps(config: ConvertConfig, meta: VideoMeta?): Int {
-        val maxDim = maxOf(meta?.width ?: 1920, meta?.height ?: 1080)
+        // After an upscale the encoder is really producing 4K/8K frames — bill it that way.
+        val maxDim = if (config.resolution != OutputResolution.SOURCE) {
+            maxOf(config.resolution.w, config.resolution.h)
+        } else {
+            maxOf(meta?.width ?: 1920, meta?.height ?: 1080)
+        }
         val base = when {
             maxDim >= 3600 -> 45
             maxDim >= 2500 -> 30

@@ -11,6 +11,7 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewParent
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -211,10 +212,20 @@ class CurvesView @JvmOverloads constructor(
 
     // ── interaction ────────────────────────────────────────────────────────────
 
+    /** Stops the enclosing ScrollView from stealing the gesture while a point is dragged. */
+    private fun disallowParentIntercept(disallow: Boolean) {
+        var p: ViewParent? = parent
+        while (p != null) {
+            p.requestDisallowInterceptTouchEvent(disallow)
+            p = p.parent
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                disallowParentIntercept(true)
                 downX = event.x
                 downY = event.y
                 dirtySinceDown = false
@@ -240,6 +251,7 @@ class CurvesView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_MOVE -> {
+                disallowParentIntercept(true)
                 if (abs(event.x - downX) > 12f * density / 2 || abs(event.y - downY) > 12f * density / 2) {
                     removeCallbacks(longPressRunnable)
                 }
@@ -263,6 +275,7 @@ class CurvesView @JvmOverloads constructor(
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 removeCallbacks(longPressRunnable)
+                disallowParentIntercept(false)
                 if (event.actionMasked == MotionEvent.ACTION_UP && draggingIndex < 0 && !dirtySinceDown) {
                     performClick()
                 }
@@ -281,7 +294,7 @@ class CurvesView @JvmOverloads constructor(
     }
 
     private fun nearestPoint(px: Float, py: Float): Int {
-        val threshold = 20f * density / 2
+        val threshold = 26f * density / 2
         var best = -1
         var bestDist = Float.MAX_VALUE
         for ((i, p) in currentPoints().withIndex()) {

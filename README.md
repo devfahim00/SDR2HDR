@@ -29,6 +29,32 @@ same defaults, same output behavior.
 - Output: `/sdcard/Movies/HDR10_Converted/output_HDR10[N].mp4`, auto-named to avoid overwrites,
   media-scanned on completion
 
+## v0.0.1 features
+
+- **Resolution / upscaling** — keep the original resolution or rescale to 720p / 1080p /
+  2K (2560×1440) / 4K (3840×2160) / 8K (7680×4320). Lanczos scaling with
+  `force_original_aspect_ratio=decrease` so aspect ratio is preserved (portrait videos come
+  out 2160×3840 etc.). Rescaling happens at the end of the chain, so grading runs at source
+  speed and only the final frames are scaled. Hardware-encoder bitrates are re-tiered for
+  the *target* resolution.
+- **Sharpness control** — 0…100 luma-only `unsharp` mask (amount 0.00–1.50), applied at the
+  final resolution so it survives upscaling; 0 = off
+- **Settings sheet on the home page** (gear button next to the day/night toggle):
+  - GitHub repository, owner ([t.me/droxilen](https://t.me/droxilen)) and channel
+    ([t.me/projectredfox](https://t.me/projectredfox)) links
+  - **Hide folder explorer** switch — the home page shows only a centered
+    "Pick a video to convert" card
+  - **Start Local Server** — runs a tiny HTTP server on a *random free port* on the Wi-Fi
+    LAN; open the shown URL (`http://<phone-ip>:<port>`) in any browser to use every
+    conversion feature remotely: pick a video, all format / codec / resolution / tone-map /
+    grading chips and sliders, an interactive RGB curves editor, then start / pause /
+    resume / stop with live progress. Runs as a foreground service with a persistent
+    notification (long-press the row to copy the URL)
+  - **Check for Updates** (manual, bypasses the 6 h auto-check limit) and **About**
+- **Curves editor fix** — dragging curve points no longer scrolls the settings page
+  (parent touch-interception disabled during drags, bigger canvas, larger grab radius)
+- App version reset to **0.0.1** (versionCode 3) to match the GitHub release tag
+
 ## v1.1 features
 
 - **Background conversion** — the conversion now runs inside a foreground service
