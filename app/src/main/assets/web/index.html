@@ -435,7 +435,7 @@
             <div class="bar"><div id="upFill"></div></div>
             <div class="hint" id="upSpeed"></div>
           </div>
-          <div class="hint" style="margin-top:14px">Local render: the file stays on this PC and its CPU/GPU does the work — nothing travels over Wi-Fi. Chrome / Edge additionally produce true HDR output.</div>
+          <div class="hint" style="margin-top:14px">Local render: the file stays on this PC and its CPU/GPU does the work — nothing travels over Wi-Fi. Output is MP4 (H.264) in Chrome, Edge and Safari; older browsers fall back to WebM.</div>
         </div>
       </div>
     </div>
@@ -456,7 +456,7 @@
           </div>
           <div class="engine" id="engPc">
             <div class="et"><svg><use href="#i-pc"/></svg>This PC · browser render</div>
-            <div class="ed" id="engPcDesc">Uses this computer’s CPU/GPU (WebCodecs + WebGL) so the phone stays cool. Output: HDR-marked WebM.</div>
+            <div class="ed" id="engPcDesc">Uses this computer’s CPU/GPU (WebGL grading + browser encoder) so the phone stays cool. Output: high-quality MP4 (H.264) — WebM only on legacy browsers.</div>
             <div class="es" id="engPcStat"></div>
           </div>
         </div>
@@ -665,7 +665,7 @@ function switchTab(t) {
 
 // ── chip groups ───────────────────────────────────────────────────────────────
 const PHONE_CODECS = { hevc: "HEVC · x265", hevchw: "HEVC · MediaCodec", h264hw: "H.264 · MediaCodec", vp9: "VP9", av1: "AV1" };
-const PC_CODECS = { vp9: "VP9 (WebM HDR)", av1: "AV1 (WebM HDR)", hevc: "HEVC (if supported)" };
+const PC_CODECS = { h264: "H.264 · MP4 (recommended)", vp9: "VP9 · WebM HDR", av1: "AV1 · WebM HDR" };
 const GROUPS = {
   gFormat: { def: "pq", map: { pq: "HDR10 · PQ", hlg: "HLG · BT.2100" }, key: "format" },
   gRes:    { def: "source", map: { source: "Original", "720p": "720p", "1080p": "1080p", "2k": "2K", "4k": "4K", "8k": "8K" }, key: "resolution" },
@@ -713,14 +713,12 @@ function reselectChip(key) {
 function onOptionChanged() {
   $("startBtn").textContent =
     state.engine === "pc"
-      ? (PC_FULL
-          ? `Render on this PC → ${sel.format === "hlg" ? "HLG" : "HDR10"} WebM`
-          : "Render on this PC → WebM (compatibility)")
+      ? `Render on this PC → ${sel.format === "hlg" ? "HLG" : "HDR10"} MP4`
       : (sel.format === "hlg" ? "Convert to HLG" : "Convert to HDR10");
   $("lblFormat").textContent = state.engine === "pc"
-    ? (PC_FULL ? "8-bit PQ/HLG tagged (beta)" : "compatibility · 8-bit SDR-grade") : "";
+    ? (PC_FULL ? "H.264 · PQ/HLG-tagged (beta)" : "H.264 · this browser’s recorder") : "";
   $("stEngine").textContent = state.engine === "pc"
-    ? (PC_FULL ? "This PC (browser)" : "This PC (compatibility)") : "Phone (server)";
+    ? (PC_FULL ? "This PC (WebCodecs)" : "This PC (browser recorder)") : "Phone (server)";
 }
 
 // capability gating for the phone pipeline
@@ -740,8 +738,10 @@ function applyCaps(caps) {
 
 // ── engine switch ─────────────────────────────────────────────────────────────
 // Two local-render tiers:
-//   PC_FULL — WebCodecs VideoEncoder (Chromium desktop) → true PQ/HLG-tagged HDR WebM
-//   PC_OK   — WebCodecs OR MediaRecorder+captureStream (Firefox etc.) → compatibility render
+//   PC_FULL — WebCodecs VideoEncoder (secure contexts) → frame-exact H.264 MP4,
+//             or HDR-tagged WebM when only VP9/AV1 encoders exist
+//   PC_OK   — MediaRecorder + captureStream (works on ANY origin, even plain
+//             http://phone-ip) → real-time graded MP4; WebM only on legacy browsers
 const PC_FULL = !!window.VideoEncoder && !!window.VideoFrame && !!window.HTMLVideoElement;
 const CAN_REC = !!window.MediaRecorder && !!(window.HTMLCanvasElement && HTMLCanvasElement.prototype.captureStream);
 const PC_OK = PC_FULL || CAN_REC;
@@ -761,8 +761,8 @@ function setEngine(e) {
   if (e === "pc") {
     if (PC_FULL) {
       GROUPS.gCodec.map = PC_CODECS;
-      GROUPS.gCodec.def = "vp9";
-      if (!PC_CODECS[sel.codec]) sel.codec = "vp9";
+      GROUPS.gCodec.def = "h264";
+      if (!PC_CODECS[sel.codec]) sel.codec = "h264";
       ["secDyn", "secGpu", "secThreads", "secPreset"].forEach(id => $(id).style.display = "none");
       $("secCodec").style.display = "";
       probePcCodecs();
@@ -825,9 +825,9 @@ async function probePcCodecs() {
     } catch (_) { return false; }
   };
   pcCodecProbe = {
+    h264: await tryCodec("avc1.640028", true) || await tryCodec("avc1.640028", false),
     vp9: await tryCodec("vp09.00.10.08", true) || await tryCodec("vp09.00.10.08", false),
     av1: await tryCodec("av01.0.08M.08", true) || await tryCodec("av01.0.08M.08", false),
-    hevc: await tryCodec("hvc1.2.4.L153.B00", true) || await tryCodec("hvc1.2.4.L153.B00", false),
   };
   for (const [k, ok] of Object.entries(pcCodecProbe)) {
     const el = GROUPS.gCodec._els && GROUPS.gCodec._els[k];
@@ -836,7 +836,7 @@ async function probePcCodecs() {
     else el.setAttribute("disabled", "");
   }
   if (!pcCodecProbe[sel.codec]) {
-    const firstOk = ["vp9", "av1", "hevc"].find(k => pcCodecProbe[k]);
+    const firstOk = ["h264", "vp9", "av1"].find(k => pcCodecProbe[k]);
     if (firstOk) { sel.codec = firstOk; reselectChip("codec"); }
   }
   const okList = Object.entries(pcCodecProbe).filter(([, v]) => v).map(([k]) => k.toUpperCase()).join(" · ") || "none";
@@ -1212,10 +1212,11 @@ function setPhase(p) {
 }
 $("btnDlOut").onclick = () => {
   if (window._pcResult) {
-    // result of a browser render — download the local WebM
+    // result of a browser render — download the local MP4/WebM
+    const r = window._pcResult;
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(window._pcResult);
-    a.download = (state.pcFile ? state.pcFile.name : "sdr2hdr").replace(/\.[^.]+$/, "") + "_HDR.webm";
+    a.href = URL.createObjectURL(r.blob);
+    a.download = (state.pcFile ? state.pcFile.name : "sdr2hdr").replace(/\.[^.]+$/, "") + (r.suffix || "_HDR") + "." + (r.ext || "mp4");
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 8000);
     return;
@@ -1387,6 +1388,219 @@ class WebMWriter {
   }
 }
 
+// ── tiny fragmented-MP4 muxer (H.264 video + Opus audio, HDR colour tags) ─────
+// Mirrors the box layout of Chrome's own MediaRecorder MP4 output: ftyp +
+// moov(mvex) followed by moof/mdat fragments. Plays in Chrome, VLC and modern
+// players. The avcC record is handed in via setAvcC() as soon as the VideoEncoder
+// emits it (decoderConfig.description) — the moov is serialised at finish().
+function mp4Cat(arrs) {
+  const n = arrs.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const a of arrs) { out.set(a, o); o += a.length; }
+  return out;
+}
+function mp4Str(s) { const a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+function mp4U8(...v) { return new Uint8Array(v); }
+function mp4U16(...v) { const a = new Uint8Array(v.length * 2); let i = 0; for (const x of v) { a[i++] = (x >> 8) & 255; a[i++] = x & 255; } return a; }
+function mp4U32(...v) { const a = new Uint8Array(v.length * 4); let i = 0; for (const x of v) { a[i++] = (x >>> 24) & 255; a[i++] = (x >>> 16) & 255; a[i++] = (x >>> 8) & 255; a[i++] = x & 255; } return a; }
+function mp4Box(type, ...payloads) {
+  const body = mp4Cat(payloads);
+  return mp4Cat([mp4U32(8 + body.length), mp4Str(type), body]);
+}
+function mp4Full(type, ver, flags, ...payloads) {
+  return mp4Box(type, mp4U8(ver, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255), ...payloads);
+}
+const MP4_IDENTITY_MATRIX = mp4U32(0x00010000, 0, 0, 0, 0x00010000, 0, 0, 0, 0x40000000);
+
+class Mp4Writer {
+  /**
+   * @param o {width, height, fps, durationSec, hasAudio,
+   *           transfer: 16 (PQ) | 18 (HLG)}
+   */
+  constructor(o) {
+    this.o = o;
+    this.vts = Math.max(600, Math.round(o.fps * 1000)); // video timescale, 1 frame = 1000
+    this.ats = 48000;                                    // audio timescale (opus fixed)
+    this.frags = [];       // finished moof+mdat byte arrays
+    this.pend = { v: [], a: [] };
+    this.aq = [];          // audio backlog above the video head
+    this.lastVTs = -1e18;
+    this.fragStart = null;
+    this.seq = 0;
+    this.avcC = null;
+  }
+  setAvcC(d) { this.avcC = d; }
+
+  addAudio(tsUs, data) {
+    const ts = Math.round(tsUs * this.ats / 1e6);
+    const s = { ts, data };
+    if (ts <= this.lastVTs) this.pend.a.push(s); else this.aq.push(s);
+  }
+  addVideo(tsUs, key, data) {
+    const ts = Math.round(tsUs * this.vts / 1e6);
+    if (key && this.pend.v.length && this.fragStart !== null && ts - this.fragStart > 2500) this._emit();
+    if (!this.pend.v.length) this.fragStart = ts;
+    this.pend.v.push({ ts, key, data });
+    this.lastVTs = ts;
+    while (this.aq.length && this.aq[0].ts <= ts) this.pend.a.push(this.aq.shift());
+    if (this.pend.v.length > 240) this._emit(); // hard cap: fragment every ~8 s at 30 fps
+  }
+
+  _emit() {
+    const v = this.pend.v, a = this.pend.a;
+    this.pend = { v: [], a: [] };
+    this.fragStart = null;
+    if (!v.length && !a.length) return;
+    this.seq++;
+    const vDef = Math.round(this.vts / this.o.fps);
+    const aDef = 960; // one 20 ms opus packet
+    const durOf = (arr, i, def) => (i + 1 < arr.length ? Math.max(1, arr[i + 1].ts - arr[i].ts) : def);
+
+    const mfhd = mp4Full("mfhd", 0, 0, mp4U32(this.seq));
+    const trafs = [];
+    if (v.length) {
+      const tfhd = mp4Full("tfhd", 0, 0x00020000, mp4U32(1));
+      const tfdt = mp4Full("tfdt", 0, 0, mp4U32(Math.max(0, Math.min(0xFFFFFFFF, v[0].ts))));
+      const n = v.length;
+      const trun = new Uint8Array(20 + 12 * n);
+      const dv = new DataView(trun.buffer);
+      dv.setUint32(0, trun.length);
+      trun.set(mp4Str("trun"), 4);
+      dv.setUint32(8, 0x00000701); // v0, flags: data-offset | duration | size | flags
+      dv.setUint32(12, n);
+      let p = 20;
+      for (let i = 0; i < n; i++) {
+        dv.setUint32(p, durOf(v, i, vDef)); p += 4;
+        dv.setUint32(p, v[i].data.length); p += 4;
+        dv.setUint32(p, v[i].key ? 0x02000000 : 0x01010000); p += 4;
+      }
+      const body = mp4Cat([tfhd, tfdt, trun]);
+      trafs.push({ box: mp4Cat([mp4U32(8 + body.length), mp4Str("traf"), body]), size: 8 + body.length, data: v.map(s => s.data) });
+    }
+    if (a.length) {
+      const tfhd = mp4Full("tfhd", 0, 0x00020000, mp4U32(2));
+      const tfdt = mp4Full("tfdt", 0, 0, mp4U32(Math.max(0, Math.min(0xFFFFFFFF, a[0].ts))));
+      const n = a.length;
+      const trun = new Uint8Array(20 + 12 * n);
+      const dv = new DataView(trun.buffer);
+      dv.setUint32(0, trun.length);
+      trun.set(mp4Str("trun"), 4);
+      dv.setUint32(8, 0x00000701);
+      dv.setUint32(12, n);
+      let p = 20;
+      for (let i = 0; i < n; i++) {
+        dv.setUint32(p, durOf(a, i, aDef)); p += 4;
+        dv.setUint32(p, a[i].data.length); p += 4;
+        dv.setUint32(p, 0x02000000); p += 4;
+      }
+      const body = mp4Cat([tfhd, tfdt, trun]);
+      trafs.push({ box: mp4Cat([mp4U32(8 + body.length), mp4Str("traf"), body]), size: 8 + body.length, data: a.map(s => s.data) });
+    }
+
+    const moofBody = mp4Cat([mfhd, ...trafs.map(t => t.box)]);
+    const moof = mp4Cat([mp4U32(8 + moofBody.length), mp4Str("moof"), moofBody]);
+    const mdatData = mp4Cat(trafs.flatMap(t => t.data));
+    const frag = new Uint8Array(moof.length + 8 + mdatData.length);
+    frag.set(moof, 0);
+    frag.set(mp4U32(8 + mdatData.length), moof.length);
+    frag.set(mp4Str("mdat"), moof.length + 4);
+    frag.set(mdatData, moof.length + 8);
+    // patch every trun data_offset: from moof start to that track's first sample
+    // in the mdat (the first traf starts at the mdat payload; later trafs follow
+    // the preceding trafs' sample bytes)
+    const dv = new DataView(frag.buffer);
+    let off = 8 + mfhd.length;
+    let dataCursor = moof.length + 8;
+    for (const t of trafs) {
+      dv.setUint32(off + 56, dataCursor);
+      dataCursor += t.data.reduce((s, d) => s + d.length, 0);
+      off += t.size;
+    }
+    this.frags.push(frag);
+  }
+
+  finish() {
+    while (this.aq.length) this.pend.a.push(this.aq.shift());
+    if (this.pend.v.length || this.pend.a.length) this._emit();
+    const o = this.o;
+    const d2 = (ts) => Math.max(0, Math.round(o.durationSec * ts));
+
+    const ftyp = mp4Box("ftyp", mp4Str("isom"), mp4U32(512), mp4Str("isom"), mp4Str("iso2"), mp4Str("avc1"), mp4Str("mp41"));
+
+    // ── video track ──
+    const visEntry = mp4Cat([
+      mp4U8(0, 0, 0, 0, 0, 0, 0, 1),             // reserved + data_reference_index
+      mp4U8(0, 0, 0, 0),                           // pre_defined + reserved
+      mp4U8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),   // pre_defined ×3
+      mp4U16(o.width), mp4U16(o.height),
+      mp4U32(0x00480000), mp4U32(0x00480000),     // 72 dpi
+      mp4U32(0), mp4U16(1),                        // reserved + frame count
+      new Uint8Array(32),                          // compressorname
+      mp4U16(0x0018), mp4U16(0xFFFF),             // depth + pre_defined
+    ]);
+    const colr = mp4Box("colr", mp4Str("nclx"), mp4U16(9), mp4U16(o.transfer), mp4U16(9), mp4U8(0));
+    const avc1 = mp4Box("avc1", visEntry,
+      this.avcC ? mp4Box("avcC", this.avcC) : mp4U8(),
+      colr);
+    const stsdV = mp4Full("stsd", 0, 0, mp4U32(1), avc1);
+    const empty = (type) => mp4Full(type, 0, 0, mp4U32(0));
+    const stblV = mp4Box("stbl", stsdV, empty("stts"), empty("stsc"),
+      mp4Full("stsz", 0, 0, mp4U32(0), mp4U32(0)), empty("stco"));
+    const dref = mp4Full("dref", 0, 0, mp4U32(1), mp4Full("url ", 0, 1));
+    const dinf = mp4Box("dinf", dref);
+    const mdhdV = mp4Full("mdhd", 0, 0, mp4U32(0), mp4U32(0), mp4U32(this.vts), mp4U32(d2(this.vts)), mp4U16(0x55C4), mp4U16(0));
+    const hdlrV = mp4Full("hdlr", 0, 0, mp4U32(0), mp4Str("vide"), mp4U32(0, 0, 0), mp4Str("VideoHandler\0"));
+    const minfV = mp4Box("minf", mp4Full("vmhd", 0, 1, mp4U16(0), mp4U16(0, 0, 0)), dinf, stblV);
+    const tkhdV = mp4Full("tkhd", 0, 3,
+      mp4U32(0, 0), mp4U32(1), mp4U32(0), mp4U32(d2(1000)),
+      mp4U32(0, 0), mp4U16(0), mp4U16(0), mp4U16(0), mp4U16(0),
+      MP4_IDENTITY_MATRIX,
+      mp4U32(o.width * 65536), mp4U32(o.height * 65536));
+    const trakV = mp4Box("trak", tkhdV, mp4Box("mdia", mdhdV, hdlrV, minfV));
+
+    // ── audio track (opus in mp4, mirrors Chrome's muxer) ──
+    let trakA = null;
+    if (o.hasAudio) {
+      const opusEntry = mp4Cat([
+        mp4U8(0, 0, 0, 0, 0, 0, 0, 1),  // reserved + data_reference_index
+        mp4U32(0, 0),                    // reserved
+        mp4U16(2),                       // channel count
+        mp4U16(16),                      // sample size
+        mp4U16(0), mp4U16(0),            // pre_defined + reserved
+        mp4U32(48000 * 65536),           // sample rate 16.16
+      ]);
+      const dOpsLE = (v, n) => { const a = new Uint8Array(n); for (let i = 0; i < n; i++) a[i] = (v >> (8 * i)) & 255; return a; };
+      const dOps = mp4Box("dOps", mp4U8(0), mp4U8(2), dOpsLE(0, 2), dOpsLE(48000, 4), dOpsLE(0, 2), mp4U8(0));
+      const opus = mp4Box("Opus", opusEntry, dOps);
+      const stsdA = mp4Full("stsd", 0, 0, mp4U32(1), opus);
+      const stblA = mp4Box("stbl", stsdA, empty("stts"), empty("stsc"),
+        mp4Full("stsz", 0, 0, mp4U32(0), mp4U32(0)), empty("stco"));
+      const mdhdA = mp4Full("mdhd", 0, 0, mp4U32(0), mp4U32(0), mp4U32(this.ats), mp4U32(d2(this.ats)), mp4U16(0x55C4), mp4U16(0));
+      const hdlrA = mp4Full("hdlr", 0, 0, mp4U32(0), mp4Str("soun"), mp4U32(0, 0, 0), mp4Str("SoundHandler\0"));
+      const minfA = mp4Box("minf", mp4Full("smhd", 0, 0, mp4U16(0), mp4U16(0)), dinf, stblA);
+      const tkhdA = mp4Full("tkhd", 0, 3,
+        mp4U32(0, 0), mp4U32(2), mp4U32(0), mp4U32(d2(1000)),
+        mp4U32(0, 0), mp4U16(0), mp4U16(0), mp4U16(0x0100), mp4U16(0),
+        MP4_IDENTITY_MATRIX,
+        mp4U32(0), mp4U32(0));
+      trakA = mp4Box("trak", tkhdA, mp4Box("mdia", mdhdA, hdlrA, minfA));
+    }
+
+    const trexV = mp4Full("trex", 0, 0, mp4U32(1), mp4U32(1), mp4U32(0), mp4U32(0), mp4U32(0));
+    const trexA = mp4Full("trex", 0, 0, mp4U32(2), mp4U32(1), mp4U32(0), mp4U32(0), mp4U32(0));
+    const mvex = mp4Box("mvex", trakA ? mp4Cat([trexV, trexA]) : trexV);
+    const mvhd = mp4Full("mvhd", 0, 0,
+      mp4U32(0, 0), mp4U32(1000), mp4U32(d2(1000)),
+      mp4U32(0x00010000), mp4U16(0x0100), mp4U16(0), mp4U32(0, 0),
+      MP4_IDENTITY_MATRIX,
+      mp4U32(0, 0, 0, 0, 0, 0),
+      mp4U32(o.hasAudio ? 3 : 2));
+    const moov = mp4Box("moov", mvhd, trakV, ...(trakA ? [trakA] : []), mvex);
+    return new Blob([ftyp, moov, ...this.frags], { type: "video/mp4" });
+  }
+}
+
 // ── WebGL grading renderer ────────────────────────────────────────────────────
 let gl = null, glProg = null, glVideoTex = null, glLutTex = null, glCanvas = null;
 window._lutData = new Uint8Array(256 * 4);
@@ -1523,6 +1737,7 @@ void main() {
 }`;
 
 function initGl(w, h) {
+  if (glCanvas && glCanvas.parentNode) { try { glCanvas.remove(); } catch (_) {} } // stale node from a previous render
   glCanvas = document.createElement("canvas");
   glCanvas.width = w;
   glCanvas.height = h;
@@ -1592,6 +1807,22 @@ function drawVideoFrame(videoEl) {
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, glLutTex);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// one-line summary of the active grade, shown in the render status so it is
+// always visible that the sliders were baked into the render
+function gradeSummary(cfg) {
+  const parts = [];
+  if (cfg.exposure) parts.push("exp " + (cfg.exposure > 0 ? "+" : "") + cfg.exposure.toFixed(2));
+  if (cfg.saturation !== 1) parts.push("sat " + cfg.saturation.toFixed(2));
+  if (cfg.contrast !== 1) parts.push("con " + cfg.contrast.toFixed(2));
+  if (cfg.gamma !== 1) parts.push("gam " + cfg.gamma.toFixed(2));
+  if (cfg.brightness) parts.push("bri " + (cfg.brightness > 0 ? "+" : "") + cfg.brightness.toFixed(2));
+  if (cfg.sharpness) parts.push("sharp " + cfg.sharpness);
+  if (cfg.temperature !== 6500) parts.push(((cfg.temperature - 6500 > 0 ? "+" : "") + (cfg.temperature - 6500) + "K"));
+  if (cfg.tint) parts.push("tint " + cfg.tint.toFixed(2));
+  if (cfg.__hasCurves) parts.push("curves");
+  return parts.length ? parts.join(" · ") : "defaults";
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -1685,6 +1916,8 @@ async function runPcRender() {
   $("dlRow").classList.remove("show");
 
   const cfg = buildConfig();
+  cfg.__metaDur = state.pcFile.duration || 0;   // phone-side metadata (ms) — duration fallback
+  cfg.__hasCurves = Object.keys(cfg.curves || {}).length > 0;
   let blob = state.pcFile.file;
   try {
     if (!blob && state.pcFile.fromPhone) {
@@ -1723,65 +1956,73 @@ async function renderPcBlob(blob, cfg) {
   if (!video.videoWidth) throw new Error("This browser cannot decode that video");
 
   const [w, h] = targetDims(video.videoWidth, video.videoHeight, cfg.resolution);
-  const duration = video.duration || 0;
+  let duration = video.duration;
+  if (!isFinite(duration) || duration <= 0) duration = (cfg.__metaDur || 0) / 1000;
+  if (!isFinite(duration) || duration <= 0) throw new Error("Cannot determine the video's duration");
   $("stMsg").textContent = "Detecting frame rate…";
   const fps = await estimateFps(video);
   video.pause();
 
   // audio track → opus packets (runs entirely on this PC)
   let audioPackets = null;
-  try {
-    const ac = new OfflineAudioContext(2, Math.max(1, Math.ceil(duration * 48000)), 48000);
-    const src = ac.createBufferSource();
-    src.buffer = await ac.decodeAudioData(await blob.arrayBuffer());
-    src.connect(ac.destination);
-    src.start();
-    const rendered = await ac.startRendering();
-    audioPackets = await encodeOpus(rendered);
-  } catch (_) { /* no audio track, or unsupported codec — video only */ }
+  if (blob.size < 600 * 1048576) {
+    try {
+      const ac = new OfflineAudioContext(2, Math.max(1, Math.ceil(duration * 48000)), 48000);
+      const src = ac.createBufferSource();
+      src.buffer = await ac.decodeAudioData(await blob.arrayBuffer());
+      src.connect(ac.destination);
+      src.start();
+      const rendered = await ac.startRendering();
+      audioPackets = await encodeOpus(rendered);
+    } catch (_) { /* no audio track, or unsupported codec — video only */ }
+  }
 
+  // encoder preference: H.264 → MP4 (matches the phone engine's output), then
+  // VP9/AV1 which stay in WebM. HEVC is skipped — no safe MP4 muxing for it here.
   const codecStrings = {
-    vp9: "vp09.00.10.08",
-    av1: "av01.0.08M.08",
-    hevc: "hvc1.2.4.L153.B00",
+    h264: "avc1.640028", vp9: "vp09.00.10.08", av1: "av01.0.08M.08",
   };
   const mpix = (w * h) / (1920 * 1080);
   const bitrate = Math.round(Math.min(36e6, Math.max(1.5e6, mpix * 8e6)));
   const color = { primaries: "bt2020", transfer: cfg.format === "hlg" ? "arib-std-b67" : "smpte2084", matrix: "bt2020nc" };
+  const order = [];
+  for (const k of [cfg.codec, "h264", "vp9", "av1"]) if (codecStrings[k] && !order.includes(k)) order.push(k);
 
-  let encoderCfg = null;
-  for (const key of [cfg.codec, "vp9"]) {
+  let encoderCfg = null, codecKey = null;
+  for (const key of order) {
     const cs = codecStrings[key];
-    if (!cs) continue;
     for (const hw of ["prefer-hardware", "no-preference"]) {
       const tryCfg = {
         codec: cs, width: w, height: h, framerate: fps, bitrate,
         latencyMode: "quality", hardwareAcceleration: hw, color,
+        ...(key === "h264" ? { avc: { format: "avc" } } : {}),
       };
       try {
         const s = await VideoEncoder.isConfigSupported(tryCfg);
-        if (s && s.supported) { encoderCfg = tryCfg; break; }
+        if (s && s.supported) { encoderCfg = tryCfg; codecKey = key; break; }
       } catch (_) {}
     }
     if (encoderCfg) break;
   }
   if (!encoderCfg) throw new Error("No usable hardware/software video encoder for " + w + "×" + h);
 
-  const muxer = new WebMWriter({
-    width: w, height: h, fps, durationSec: duration,
-    hasAudio: !!audioPackets,
-    transfer: cfg.format === "hlg" ? 18 : 16,
-  });
+  const useMp4 = codecKey === "h264";
+  const codecLabel = codecKey === "h264" ? "H.264" : codecKey.toUpperCase();
+  const muxer = useMp4
+    ? new Mp4Writer({ width: w, height: h, fps, durationSec: duration, hasAudio: !!audioPackets, transfer: cfg.format === "hlg" ? 18 : 16 })
+    : new WebMWriter({ width: w, height: h, fps, durationSec: duration, hasAudio: !!audioPackets, transfer: cfg.format === "hlg" ? 18 : 16 });
   for (const p of audioPackets || []) muxer.addAudio(p.ts, p.data);
 
   let encodeError = null;
-  let lastFrameTs = 0;
   const videoEncoder = new VideoEncoder({
-    output: (chunk) => {
+    output: (chunk, meta) => {
       const data = new Uint8Array(chunk.byteLength);
       chunk.copyTo(data);
+      // the avcC record arrives with the first encoded chunk (decoderConfig.description)
+      if (useMp4 && !muxer.avcC && meta && meta.decoderConfig && meta.decoderConfig.description) {
+        try { muxer.setAvcC(new Uint8Array(meta.decoderConfig.description)); } catch (_) {}
+      }
       muxer.addVideo(chunk.timestamp, chunk.type === "key", data);
-      lastFrameTs = chunk.timestamp;
     },
     error: (e) => { encodeError = e; },
   });
@@ -1823,27 +2064,28 @@ async function renderPcBlob(blob, cfg) {
       const remain = (totalFrames - i) / Math.max(0.5, rps);
       $("stEta").textContent = isFinite(remain) ? "ETA " + fmtDur(remain * 1000) : "";
       $("stMsg").textContent =
-        `Rendering on this PC · ${w}×${h} @ ${fps}fps · ${encoderCfg.hardwareAcceleration === "prefer-hardware" ? "HW encoder" : "SW encoder"} · frame ${i + 1}/${totalFrames}`;
+        `Rendering on this PC · ${w}×${h} @ ${fps}fps · ${codecLabel} → ${useMp4 ? "MP4" : "WebM"} · ${encoderCfg.hardwareAcceleration === "prefer-hardware" ? "HW encoder" : "SW encoder"} · frame ${i + 1}/${totalFrames}`;
     }
     if (videoEncoder.encodeQueueSize > 2) await waitDequeue(videoEncoder);
   }
 
-  $("stMsg").textContent = "Finalising WebM…";
+  $("stMsg").textContent = `Finalising ${useMp4 ? "MP4" : "WebM"}…`;
   setPhase("FINALIZING");
   await videoEncoder.flush();
   videoEncoder.close();
+  if (encodeError) throw encodeError;
+  if (useMp4 && !muxer.avcC) throw new Error("Encoder did not deliver an avcC record");
   const outBlob = muxer.finish();
   URL.revokeObjectURL(url);
 
-  if (encodeError) throw encodeError;
   setPhase("DONE");
   setRing(100);
   $("stPct").textContent = "100%";
   $("barFill").style.width = "100%";
-  $("stOut").textContent = `${outBlob.size ? fmtMB(outBlob.size) : ""} ${w}×${h} HDR WebM · rendered locally on this PC`;
-  $("stMsg").textContent = `Done — ${frames} frames in ${((performance.now() - t0) / 1000).toFixed(1)}s${audioPackets ? " · opus audio" : " · no audio"}`;
+  $("stOut").textContent = `${outBlob.size ? fmtMB(outBlob.size) : ""} ${w}×${h} HDR ${useMp4 ? "MP4 (H.264)" : "WebM"} · rendered locally on this PC`;
+  $("stMsg").textContent = `Done — ${frames} frames in ${((performance.now() - t0) / 1000).toFixed(1)}s${audioPackets ? " · opus audio" : " · no audio"} · PC renders are simply faster than the phone — every frame was graded and encoded here`;
   $("btnStop").disabled = true;
-  window._pcResult = outBlob;
+  window._pcResult = { blob: outBlob, ext: useMp4 ? "mp4" : "webm", mime: outBlob.type, suffix: cfg.format === "hlg" ? "_HLG" : "_HDR" };
 
   // download + send-to-phone actions
   attachSendToPhone(cfg);
@@ -1858,10 +2100,11 @@ function attachSendToPhone(cfg) {
     sendBtn.id = "btnSendPhone";
     sendBtn.innerHTML = `<svg style="width:13px;height:13px;vertical-align:-2px;margin-right:6px"><use href="#i-upload"/></svg>Send to phone`;
     sendBtn.onclick = async () => {
-      if (!window._pcResult) return;
+      const r = window._pcResult;
+      if (!r) return;
       try {
-        const name = state.pcFile.name.replace(/\.[^.]+$/, "") + (cfg.format === "hlg" ? "_HLG" : "_HDR") + ".webm";
-        await uploadOne(new File([window._pcResult], name, { type: "video/webm" }));
+        const name = state.pcFile.name.replace(/\.[^.]+$/, "") + (r.suffix || "_HDR") + "." + (r.ext || "mp4");
+        await uploadOne(new File([r.blob], name, { type: r.mime || "video/mp4" }));
         toast("Result uploaded to the phone");
       } catch (e) { toast("Send failed: " + e.message, 4000); }
     };
@@ -1870,46 +2113,73 @@ function attachSendToPhone(cfg) {
 }
 
 // ── compatibility render (no WebCodecs): real-time WebGL grade + MediaRecorder ─
-// Firefox and other browsers without VideoEncoder play the video once at 1x while
-// the graded WebGL canvas is recorded locally — the file never leaves this PC.
+// The graded WebGL canvas is streamed into this browser's own recorder. Chrome
+// (126+), Edge and Safari record MP4 (H.264) directly; older browsers such as
+// Firefox fall back to WebM. Runs on ANY origin — even plain http://phone-ip —
+// because MediaRecorder and WebGL are not secure-context gated.
 async function renderPcCompat(blob, cfg) {
   const url = URL.createObjectURL(blob);
   const video = document.createElement("video");
   video.src = url;
   video.preload = "auto";
   video.playsInline = true;
+  video.muted = true;            // muted playback is always allowed; audio rides WebAudio
   await once(video, "loadedmetadata", 12000);
   if (!video.videoWidth) throw new Error("This browser cannot decode that video");
   const [w, h] = targetDims(video.videoWidth, video.videoHeight, cfg.resolution);
-  const duration = video.duration || 0;
+  let duration = video.duration;
+  if (!isFinite(duration) || duration <= 0) duration = (cfg.__metaDur || 0) / 1000;
   if (!isFinite(duration) || duration <= 0) throw new Error("Cannot determine the video's duration");
 
   initGl(w, h);
+  // the grading canvas must be composited for captureStream to see its updates:
+  // parked in a corner at 2px/1% opacity — invisible in practice, still painted
+  glCanvas.style.cssText = "position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1";
+  document.body.appendChild(glCanvas);
   setUniforms(cfg);
 
-  // audio carry-over: route the element through WebAudio into the recording only
-  let audioCtx = null, audioDest = null;
+  // audio: decode the whole track up-front (no autoplay policy involved) and feed
+  // it to the recorder through WebAudio while the element itself stays muted
+  let decoded = null, audioCtx = null, audioDest = null;
   if (blob.size < 600 * 1048576) {
     try {
-      const probe = new OfflineAudioContext(2, 16, 48000);
-      await probe.decodeAudioData(await blob.arrayBuffer()); // throws when there is no decodable audio
-      audioCtx = new AudioContext();
-      audioCtx.createMediaElementSource(video).connect(
-        audioDest = audioCtx.createMediaStreamDestination()
-      );
-      await audioCtx.resume();
-    } catch (_) { audioCtx = null; audioDest = null; }
+      decoded = await new OfflineAudioContext(2, 16, 48000).decodeAudioData(await blob.arrayBuffer());
+    } catch (_) { decoded = null; }   // no decodable audio track — video only
   }
+  if (decoded) {
+    try {
+      audioCtx = new AudioContext();
+      audioDest = audioCtx.createMediaStreamDestination();
+      await Promise.race([
+        audioCtx.resume(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("resume timeout")), 1500)),
+      ]).catch(() => { audioCtx = null; audioDest = null; });
+    } catch (_) { audioCtx = null; audioDest = null; }
+    if (audioCtx && audioCtx.state !== "running") { audioCtx = null; audioDest = null; }
+  }
+  const hasAudio = !!audioDest;
 
-  const stream = glCanvas.captureStream();
-  if (audioDest) for (const t of audioDest.stream.getAudioTracks()) stream.addTrack(t);
+  // grade the first frame BEFORE the recorder exists, so the very first captured
+  // frame is graded video rather than a blank canvas
+  if (video.readyState < 2) await once(video, "loadeddata", 4000);
+  if (video.currentTime > 0) { video.currentTime = 0; await once(video, "seeked", 3000); }
+  drawVideoFrame(video);
 
+  // recorder: MP4 (H.264) first, plain MP4 (VP9) next, WebM only as legacy fallback
   const mimes = [
-    "video/webm;codecs=vp9,opus", "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8,opus", "video/webm;codecs=vp8", "video/webm",
+    ["video/mp4;codecs=avc1.640033", "mp4"],
+    ["video/mp4", "mp4"],
+    ["video/webm;codecs=vp9,opus", "webm"],
+    ["video/webm;codecs=vp9", "webm"],
+    ["video/webm;codecs=vp8,opus", "webm"],
+    ["video/webm", "webm"],
   ];
-  const mimeType = mimes.find(m => { try { return MediaRecorder.isTypeSupported(m); } catch (_) { return false; } });
-  if (!mimeType) throw new Error("MediaRecorder cannot record WebM in this browser");
+  const pick = mimes.find(([m]) => { try { return MediaRecorder.isTypeSupported(m); } catch (_) { return false; } });
+  if (!pick) throw new Error("MediaRecorder cannot record video in this browser");
+  const mimeType = pick[0], ext = pick[1];
+
+  const stream = glCanvas.captureStream();   // auto mode: one captured frame per draw
+  if (audioDest) for (const t of audioDest.stream.getAudioTracks()) stream.addTrack(t);
   const mpix = (w * h) / (1920 * 1080);
   const rec = new MediaRecorder(stream, {
     mimeType,
@@ -1919,9 +2189,10 @@ async function renderPcCompat(blob, cfg) {
   const chunks = [];
   rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
   const stopped = new Promise((res) => { rec.onstop = res; });
-  rec.start(1000);
+  rec.start(500);
 
   const t0 = performance.now();
+  const gradeTxt = gradeSummary(cfg);
   const upd = () => {
     const pct = Math.min(100, Math.round(video.currentTime / duration * 100));
     setRing(pct);
@@ -1930,54 +2201,72 @@ async function renderPcCompat(blob, cfg) {
     $("stFps").textContent = "1.0× realtime";
     $("stEta").textContent = "ETA " + fmtDur(Math.max(0, duration - video.currentTime) * 1000);
     $("stMsg").textContent =
-      `Compatibility render · ${w}×${h} · ${video.currentTime.toFixed(0)}s / ${duration.toFixed(0)}s · ${mimeType.includes("vp9") ? "VP9" : "VP8"} · file stays on this PC`;
+      `Local render on this PC · ${w}×${h} · ${video.currentTime.toFixed(0)}s / ${duration.toFixed(0)}s · ${ext.toUpperCase()} · ${gradeTxt}`;
   };
+  upd();
 
   let doneReject = null;
   const done = new Promise((resolve, reject) => {
     doneReject = reject;
     video.onended = () => resolve();
-    video.onerror = () => reject(new Error("Playback error during compatibility render"));
+    video.onerror = () => reject(new Error("Playback error during local render"));
   });
-  let raf = 0;
-  const draw = () => {
+
+  // draw each decoded video frame through the grading shader; requestVideoFrameCallback
+  // is frame-exact when available, rAF is the fallback
+  const useRvfc = !!video.requestVideoFrameCallback;
+  let rvfcHandle = 0, rafHandle = 0;
+  const onVFrame = () => { drawVideoFrame(video); upd(); rvfcHandle = video.requestVideoFrameCallback(onVFrame); };
+  const onRaf = () => { drawVideoFrame(video); upd(); rafHandle = requestAnimationFrame(onRaf); };
+  const abortCheck = setInterval(() => {
     if (window._pcAbort) {
       try { video.pause(); } catch (_) {}
       try { rec.stop(); } catch (_) {}
       doneReject(new Error("aborted"));
-      return;
     }
-    drawVideoFrame(video);
-    upd();
-    raf = requestAnimationFrame(draw);
-  };
+  }, 250);
 
+  let audioNode = null;
   try {
-    await video.play();
+    await video.play();          // muted → allowed without a gesture
+    if (audioDest) {
+      audioNode = audioCtx.createBufferSource();
+      audioNode.buffer = decoded;
+      audioNode.connect(audioDest);
+      audioNode.start(0, Math.max(0, video.currentTime));
+    }
   } catch (e) {
+    clearInterval(abortCheck);
     throw new Error("This browser blocked playback: " + (e && e.message || e));
   }
-  raf = requestAnimationFrame(draw);
+  if (useRvfc) rvfcHandle = video.requestVideoFrameCallback(onVFrame);
+  else rafHandle = requestAnimationFrame(onRaf);
 
   await done;
-  cancelAnimationFrame(raf);
+  clearInterval(abortCheck);
+  if (useRvfc) { try { video.cancelVideoFrameCallback(rvfcHandle); } catch (_) {} }
+  else cancelAnimationFrame(rafHandle);
+  await new Promise((r) => setTimeout(r, 150));  // let the recorder catch the last graded frame
   try { rec.stop(); } catch (_) {}
   await stopped;
+  if (audioNode) { try { audioNode.stop(); } catch (_) {} }
   if (audioCtx) { try { await audioCtx.close(); } catch (_) {} }
+  if (glCanvas && glCanvas.parentNode) { try { glCanvas.remove(); } catch (_) {} }
   URL.revokeObjectURL(url);
 
-  let outBlob = new Blob(chunks, { type: "video/webm" });
+  let outBlob = new Blob(chunks, { type: ext === "mp4" ? "video/mp4" : "video/webm" });
   if (!outBlob.size) throw new Error("Recording produced no data");
-  try { outBlob = await patchWebmDuration(outBlob, duration); } catch (_) {}
+  if (ext === "webm") { try { outBlob = await patchWebmDuration(outBlob, duration); } catch (_) {} }
 
   setPhase("DONE");
   setRing(100);
   $("stPct").textContent = "100%";
   $("barFill").style.width = "100%";
-  $("stOut").textContent = `${fmtMB(outBlob.size)} ${w}×${h} WebM (SDR-grade) · rendered locally on this PC`;
-  $("stMsg").textContent = `Done in ${((performance.now() - t0) / 1000).toFixed(1)}s · compatibility mode${audioDest ? " · audio copied" : ""}`;
+  const codecLabel = (rec.mimeType || mimeType).includes("avc1") ? "H.264" : "VP9";
+  $("stOut").textContent = `${fmtMB(outBlob.size)} ${w}×${h} ${ext.toUpperCase()} (${codecLabel}) · rendered locally on this PC`;
+  $("stMsg").textContent = `Done in ${((performance.now() - t0) / 1000).toFixed(1)}s — this browser renders at real-time speed (the phone is slower because it encodes full 10-bit HDR); every frame was GPU-graded here${hasAudio ? " · audio copied" : ""}`;
   $("btnStop").disabled = true;
-  window._pcResult = outBlob;
+  window._pcResult = { blob: outBlob, ext, mime: outBlob.type, suffix: cfg.format === "hlg" ? "_HLG" : "_HDR" };
   attachSendToPhone(cfg);
 }
 
@@ -2112,10 +2401,10 @@ $("startBtn").onclick = async () => {
     $("engPcDesc").textContent = "Open this page on a desktop browser to render with that PC's CPU/GPU instead.";
     $("upModeSeg").style.display = "none";
   } else if (PC_FULL) {
-    $("engPcStat").textContent = "WebCodecs ready";
+    $("engPcStat").textContent = "WebCodecs ready — MP4 (H.264)";
   } else if (PC_OK) {
-    $("engPcStat").textContent = "compatibility mode ready";
-    $("engPcDesc").textContent = "No WebCodecs in this browser — local renders run in compatibility mode: real-time speed, SDR-grade 8-bit output, the file never leaves this PC. Chrome / Edge unlock true HDR WebM.";
+    $("engPcStat").textContent = "MP4 local render ready";
+    $("engPcDesc").textContent = "Local renders run on this PC at real-time speed — every frame is GPU-graded and recorded to MP4 (H.264) by this browser's own encoder. The file never leaves this PC.";
   } else {
     $("engPc").classList.add("off");
     $("engPcDesc").textContent = "This browser can't render locally — try Chrome, Edge or Firefox. It can still fully control the phone.";
