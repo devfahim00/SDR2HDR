@@ -82,9 +82,9 @@ class AppSettingsSheet(
             binding.textUpdateRowSub.text = "Checking GitHub..."
             executor.execute {
                 UpdateChecker.markChecked(activity)
-                val release = UpdateChecker.check()
+                val result = UpdateChecker.check()
                 activity.runOnUiThread {
-                    if (isShowing) showUpdateResult(release)
+                    if (isShowing) showUpdateResult(result)
                     binding.textUpdateRowSub.text =
                         "Compare with the latest GitHub release"
                 }
@@ -114,39 +114,69 @@ class AppSettingsSheet(
         }
     }
 
-    private fun showUpdateResult(release: UpdateChecker.Release?) {
+    private fun showUpdateResult(result: UpdateChecker.CheckResult) {
         val current = UpdateChecker.currentVersionName(activity)
-        if (release == null) {
-            MaterialAlertDialogBuilder(activity)
-                .setTitle("Update check")
-                .setMessage("Could not reach GitHub. Check your connection and try again.")
-                .setPositiveButton("OK", null)
-                .show()
-            return
-        }
-        if (UpdateChecker.isNewer(current, release.tag)) {
-            val notes = release.notes.ifBlank { "No release notes." }.take(2000)
-            val builder = MaterialAlertDialogBuilder(activity)
-                .setTitle("Update available · ${release.tag}")
-                .setMessage("Installed: $current\n\n$notes")
-                .setNegativeButton("Later", null)
-                .setNeutralButton("GitHub") { _, _ -> openUrl(release.pageUrl) }
-            if (release.apkUrl != null) {
-                builder.setPositiveButton("Download APK") { _, _ -> openUrl(release.apkUrl!!) }
-            } else {
-                builder.setPositiveButton("View release") { _, _ -> openUrl(release.pageUrl) }
+        when (result) {
+            is UpdateChecker.CheckResult.Error -> {
+                MaterialAlertDialogBuilder(activity)
+                    .setTitle("Update check")
+                    .setMessage(
+                        "Could not reach GitHub.\n\n${result.reason}\n\n" +
+                            "Check your connection and try again."
+                    )
+                    .setPositiveButton("Retry") { _, _ ->
+                        binding.rowUpdate.performClick()
+                    }
+                    .setNegativeButton("Close", null)
+                    .show()
+                return
             }
-            builder.show()
-        } else {
-            MaterialAlertDialogBuilder(activity)
-                .setTitle("Up to date")
-                .setMessage(
-                    "Installed: $current\nLatest release: ${release.tag}\n\n" +
-                        "You are running the newest version."
-                )
-                .setPositiveButton("OK", null)
-                .show()
+            is UpdateChecker.CheckResult.Ok -> {
+                val release = result.release
+                if (release == null) {
+                    MaterialAlertDialogBuilder(activity)
+                        .setTitle("No releases yet")
+                        .setMessage(
+                            "GitHub is reachable, but no release has been " +
+                                "published for this repository yet.\n\n" +
+                                "Installed: $current\n\n" +
+                                "Grab the APK from the repository actions or " +
+                                "watch the releases page."
+                        )
+                        .setPositiveButton("OK", null)
+                        .setNegativeButton("Releases page") { _, _ -> openUrl("https://github.com/devfahim00/SDR2HDR/releases") }
+                        .show()
+                    return
+                }
+                if (UpdateChecker.isNewer(current, release.tag)) {
+                    showUpdateAvailable(release, current)
+                } else {
+                    MaterialAlertDialogBuilder(activity)
+                        .setTitle("Up to date")
+                        .setMessage(
+                            "Installed: $current\nLatest release: ${release.tag}\n\n" +
+                                "You are running the newest version."
+                        )
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            }
         }
+    }
+
+    private fun showUpdateAvailable(release: UpdateChecker.Release, current: String) {
+        val notes = release.notes.ifBlank { "No release notes." }.take(2000)
+        val builder = MaterialAlertDialogBuilder(activity)
+            .setTitle("Update available · ${release.tag}")
+            .setMessage("Installed: $current\n\n$notes")
+            .setNegativeButton("Later", null)
+            .setNeutralButton("GitHub") { _, _ -> openUrl(release.pageUrl) }
+        if (release.apkUrl != null) {
+            builder.setPositiveButton("Download APK") { _, _ -> openUrl(release.apkUrl!!) }
+        } else {
+            builder.setPositiveButton("View release") { _, _ -> openUrl(release.pageUrl) }
+        }
+        builder.show()
     }
 
     private fun showAbout() {

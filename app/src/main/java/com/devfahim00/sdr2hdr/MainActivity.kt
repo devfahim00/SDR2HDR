@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnManualPath.setOnClickListener { showManualPathDialog() }
         binding.btnGrant.setOnClickListener { requestStorage() }
         binding.btnSettings.setOnClickListener {
-            AppSettingsSheet(this) { applyHomeMode() }.show()
+            AppSettingsSheet(this) { refresh() }.show()
         }
         setupThemeToggle()
         requestNotificationPermissionIfNeeded()
@@ -182,7 +182,10 @@ class MainActivity : AppCompatActivity() {
         if (!UpdateChecker.shouldAutoCheck(this)) return
         executor.execute {
             UpdateChecker.markChecked(this)
-            val release = UpdateChecker.check() ?: return@execute
+            val release = when (val r = UpdateChecker.check()) {
+                is UpdateChecker.CheckResult.Ok -> r.release
+                is UpdateChecker.CheckResult.Error -> null
+            } ?: return@execute
             val current = UpdateChecker.currentVersionName(this)
             if (UpdateChecker.isNewer(current, release.tag)) {
                 runOnUiThread {
@@ -279,40 +282,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        applyHomeMode()
+        applyHomeLayout()
         val granted = hasStorageAccess()
-        binding.permissionPanel.visibility = if (granted) View.GONE else View.VISIBLE
         if (!granted) {
             folderAdapter.submit(emptyList())
-            binding.emptyHint.visibility = View.GONE
-            binding.scanProgress.visibility = View.GONE
-            binding.cardAllVideos.visibility = View.GONE
-            binding.textFoldersLabel.visibility = View.GONE
-            binding.btnManualPath.visibility = View.GONE
             return
         }
 
         // "Hide folder explorer" mode: only the centered pick-a-video card
         if (AppPrefs.hideFolderExplorer(this)) {
-            binding.cardAllVideos.visibility = View.VISIBLE
-            binding.textFoldersLabel.visibility = View.GONE
-            binding.btnManualPath.visibility = View.GONE
-            binding.scanProgress.visibility = View.GONE
-            binding.emptyHint.visibility = View.GONE
-            binding.recyclerFolders.visibility = View.GONE
             folderAdapter.submit(emptyList())
             return
         }
 
-        binding.cardAllVideos.visibility = View.VISIBLE
-        binding.textFoldersLabel.visibility = View.VISIBLE
-        binding.btnManualPath.visibility = View.VISIBLE
-        binding.recyclerFolders.visibility = View.VISIBLE
         binding.scanProgress.visibility = View.VISIBLE
         executor.execute {
             val dirs = VideoRepository.scanFolders()
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
+                // the explorer may have been hidden while the scan was running —
+                // dropping the results keeps the layout consistent (a later
+                // un-hide always triggers a fresh refresh)
+                if (AppPrefs.hideFolderExplorer(this)) return@runOnUiThread
                 binding.scanProgress.visibility = View.GONE
                 folderAdapter.submit(dirs)
                 binding.emptyHint.visibility = if (dirs.isEmpty()) View.VISIBLE else View.GONE
@@ -320,9 +311,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Centered "pick a video" (hide folder explorer) vs. the full explorer layout. */
-    private fun applyHomeMode() {
+    /**
+     * Single source of truth for the home layout. Called on resume AND whenever the
+     * hide-folder-explorer toggle flips, so the folder list / labels / manual-path
+     * button appear and disappear immediately (previously only the layout params
+     * were tweaked and the RecyclerView kept its old visibility — the list stayed
+     * on screen after enabling "hide", and stayed gone after disabling it).
+     */
+    private fun applyHomeLayout() {
+        val granted = hasStorageAccess()
+        binding.permissionPanel.visibility = if (granted) View.GONE else View.VISIBLE
+        binding.cardUpdate.visibility = if (pendingRelease != null) View.VISIBLE else View.GONE
+
+        if (!granted) {
+            binding.cardAllVideos.visibility = View.GONE
+            binding.textFoldersLabel.visibility = View.GONE
+            binding.btnManualPath.visibility = View.GONE
+            binding.scanProgress.visibility = View.GONE
+            binding.emptyHint.visibility = View.GONE
+            binding.recyclerFolders.visibility = View.GONE
+            binding.allVideosContainer.layoutParams =
+                (binding.allVideosContainer.layoutParams as LinearLayout.LayoutParams).apply {
+                    height = LinearLayout.LayoutParams.WRAP_CONTENT
+                    weight = 0f
+                }
+            return
+        }
+
         val hide = AppPrefs.hideFolderExplorer(this)
+        binding.cardAllVideos.visibility = View.VISIBLE
+        binding.textFoldersLabel.visibility = if (hide) View.GONE else View.VISIBLE
+        binding.btnManualPath.visibility = if (hide) View.GONE else View.VISIBLE
+        binding.recyclerFolders.visibility = if (hide) View.GONE else View.VISIBLE
+        binding.emptyHint.visibility = View.GONE
+        binding.scanProgress.visibility = View.GONE
+
+        // Centered "pick a video" (hide folder explorer) vs. the full explorer layout.
         val lp = binding.allVideosContainer.layoutParams as LinearLayout.LayoutParams
         if (hide) {
             lp.height = 0

@@ -1,232 +1,587 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SDR2HDR · Remote</title>
+<meta name="color-scheme" content="dark light">
+<title>SDR2HDR · Remote Studio</title>
 <style>
   :root {
-    --bg: #0d1016;
-    --surface: #141822;
-    --surface2: #1a1f2b;
+    --bg: #0a0c12;
+    --bg2: #0d1018;
+    --surface: rgba(255,255,255,.045);
+    --surface-solid: #141824;
+    --surface2: rgba(255,255,255,.07);
     --border: rgba(255,255,255,.09);
-    --text: #f2f4f8;
-    --dim: #8b93a4;
-    --blue: #1c75fd;
-    --blue-soft: rgba(28,117,253,.14);
-    --green: #34c759;
-    --red: #eb3741;
-    --amber: #ff9500;
-    --radius: 16px;
+    --border-hi: rgba(255,255,255,.18);
+    --text: #eef1f7;
+    --dim: #8b93a7;
+    --dim2: #626a7e;
+    --blue: #3b82f6;
+    --blue2: #60a5fa;
+    --violet: #8b5cf6;
+    --cyan: #22d3ee;
+    --green: #34d399;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --grad: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    --grad-soft: linear-gradient(135deg, rgba(59,130,246,.16), rgba(139,92,246,.16));
+    --shadow: 0 8px 32px rgba(0,0,0,.45);
+    --radius: 20px;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", sans-serif;
+  }
+  html[data-theme="light"] {
+    --bg: #eef1f7;
+    --bg2: #e7ebf3;
+    --surface: rgba(255,255,255,.72);
+    --surface-solid: #ffffff;
+    --surface2: rgba(15,23,42,.055);
+    --border: rgba(15,23,42,.10);
+    --border-hi: rgba(15,23,42,.22);
+    --text: #101524;
+    --dim: #5b6474;
+    --dim2: #8a91a3;
+    --shadow: 0 8px 32px rgba(30,41,59,.14);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, Inter, sans-serif; }
-  body { min-height: 100vh; padding: 20px; }
-  .wrap { max-width: 1080px; margin: 0 auto; }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--sans); }
+  body { min-height: 100vh; overflow-x: hidden; }
 
-  header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
-  .logo { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg,#1c75fd,#7e3cff); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: -.5px; }
-  h1 { font-size: 24px; letter-spacing: -.3px; }
-  .sub { color: var(--dim); font-size: 12px; font-family: var(--mono); margin-top: 3px; }
+  /* ── aurora backdrop ─────────────────────────────────────── */
+  .aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .aurora::before, .aurora::after {
+    content: ""; position: absolute; width: 62vmax; height: 62vmax; border-radius: 50%;
+    filter: blur(90px); opacity: .17; will-change: transform;
+  }
+  .aurora::before { background: radial-gradient(circle at 30% 30%, #3b82f6, transparent 65%); top: -28vmax; left: -18vmax; animation: drift1 26s ease-in-out infinite alternate; }
+  .aurora::after { background: radial-gradient(circle at 70% 70%, #8b5cf6, transparent 65%); bottom: -30vmax; right: -20vmax; animation: drift2 32s ease-in-out infinite alternate; }
+  html[data-theme="light"] .aurora::before, html[data-theme="light"] .aurora::after { opacity: .22; }
+  @keyframes drift1 { to { transform: translate(9vmax, 7vmax) scale(1.12); } }
+  @keyframes drift2 { to { transform: translate(-8vmax, -6vmax) scale(.94); } }
+  @media (prefers-reduced-motion: reduce) { .aurora::before, .aurora::after { animation: none; } }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 20px 80px; }
+
+  /* ── header ──────────────────────────────────────────────── */
+  header {
+    position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; margin: 0 -8px 22px; border-radius: 0 0 22px 22px;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    width: 46px; height: 46px; border-radius: 15px; background: var(--grad);
+    display: flex; align-items: center; justify-content: center; flex: none;
+    font-weight: 800; font-size: 12.5px; letter-spacing: -.5px; color: #fff;
+    box-shadow: 0 6px 18px rgba(59,130,246,.35), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .htxt { min-width: 0; }
+  h1 { font-size: 21px; letter-spacing: -.35px; display: flex; align-items: center; gap: 8px; }
+  .hbadge {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 8px; border-radius: 999px; background: var(--grad-soft); color: var(--blue2);
+    border: 1px solid rgba(59,130,246,.3); white-space: nowrap;
+  }
+  .sub { color: var(--dim); font-size: 11.5px; font-family: var(--mono); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+  .sub .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: var(--amber); box-shadow: 0 0 0 0 rgba(251,191,36,.5); animation: pulse 2s infinite; }
+  .sub.live .dot { background: var(--green); box-shadow: 0 0 0 0 rgba(52,211,153,.5); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.45);} 70% { box-shadow: 0 0 0 8px rgba(52,211,153,0);} 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0);} }
   .spacer { flex: 1; }
-  .pill-btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 9px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-  .pill-btn:hover { border-color: rgba(28,117,253,.5); }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 13px; flex: none; display: flex; align-items: center; justify-content: center;
+    background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+    cursor: pointer; transition: transform .18s, border-color .18s, background .18s;
+  }
+  .icon-btn:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+  .icon-btn svg { width: 19px; height: 19px; }
+  .icon-btn.danger { color: var(--red); }
+  .pill-btn {
+    background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 13px; padding: 10px 16px; font-size: 12.5px; font-weight: 650; cursor: pointer;
+    transition: transform .18s, border-color .18s;
+  }
+  .pill-btn:hover { transform: translateY(-1px); border-color: var(--border-hi); }
   .pill-btn.danger { color: var(--red); }
+  .pill-btn.danger:hover { border-color: rgba(248,113,113,.5); background: rgba(248,113,113,.1); }
 
-  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
-  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  /* ── stat strip ──────────────────────────────────────────── */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  @media (max-width: 860px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 13px 15px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .stat .k { font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim2); font-family: var(--mono); }
+  .stat .v { font-size: 13.5px; font-weight: 650; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stat .v.gradient { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
-  .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--dim); margin-bottom: 12px; font-family: var(--mono); }
+  /* ── layout grid ─────────────────────────────────────────── */
+  .grid { display: grid; grid-template-columns: 400px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
 
-  .search { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 12px; padding: 10px 12px; font-size: 13px; outline: none; margin-bottom: 10px; }
-  .search:focus { border-color: rgba(28,117,253,.55); }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: 16px; }
+  .card-title { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+  .card-title .ic { width: 30px; height: 30px; border-radius: 10px; background: var(--grad-soft); display: flex; align-items: center; justify-content: center; color: var(--blue2); flex: none; }
+  .card-title .ic svg { width: 15px; height: 15px; }
+  .card-title h2 { font-size: 13.5px; letter-spacing: -.1px; }
+  .card-title .tag { font-size: 9px; font-weight: 700; letter-spacing: .07em; color: var(--amber); border: 1px solid rgba(251,191,36,.35); background: rgba(251,191,36,.1); padding: 2.5px 7px; border-radius: 999px; text-transform: uppercase; }
 
-  #files { max-height: 460px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-  .file { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; cursor: pointer; }
-  .file:hover { background: var(--surface2); }
-  .file.sel { border-color: var(--blue); background: var(--blue-soft); }
-  .fname { font-size: 13px; font-weight: 600; word-break: break-all; }
-  .fmeta { font-size: 10.5px; color: var(--dim); font-family: var(--mono); margin-top: 4px; }
+  /* ── segmented tabs ──────────────────────────────────────── */
+  .seg { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 4px; margin-bottom: 12px; }
+  .seg button {
+    flex: 1; border: 0; background: transparent; color: var(--dim); font-size: 12px; font-weight: 650;
+    padding: 9px 6px; border-radius: 10px; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .seg button svg { width: 14px; height: 14px; }
+  .seg button.on { background: var(--grad); color: #fff; box-shadow: 0 4px 14px rgba(59,130,246,.35); }
 
-  .section { margin-bottom: 18px; }
-  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); font-family: var(--mono); margin-bottom: 8px; display: block; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 20px; padding: 7px 13px; font-size: 12px; font-weight: 600; cursor: pointer; user-select: none; }
-  .chip.on { background: var(--text); color: #0d1016; border-color: var(--text); }
-  .chip.def { border-color: rgba(28,117,253,.55); }
-  .chip.def:not(.on) { color: #7fb0ff; }
-  .chip[disabled] { opacity: .35; cursor: not-allowed; }
-  .hint { font-size: 10.5px; color: var(--dim); font-family: var(--mono); margin-top: 7px; }
+  /* ── search + file list ──────────────────────────────────── */
+  .search {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 13px; padding: 11px 14px 11px 38px; font-size: 13px; outline: none; margin-bottom: 12px;
+    transition: border-color .2s, box-shadow .2s; font-family: inherit;
+  }
+  .search:focus { border-color: rgba(59,130,246,.55); box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--dim2); }
+  #files { max-height: 430px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
+  #files::-webkit-scrollbar { width: 8px; }
+  #files::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 8px; }
+  .file {
+    border: 1px solid var(--border); border-radius: 14px; padding: 11px 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 11px; transition: all .18s; position: relative; overflow: hidden;
+  }
+  .file:hover { background: var(--surface2); transform: translateX(3px); }
+  .file.sel { border-color: rgba(59,130,246,.65); background: var(--grad-soft); }
+  .file.sel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--grad); }
+  .file .ficon { width: 38px; height: 38px; border-radius: 11px; background: var(--surface2); display: flex; align-items: center; justify-content: center; flex: none; color: var(--dim); }
+  .file.sel .ficon { color: var(--blue2); background: rgba(59,130,246,.14); }
+  .file .ficon svg { width: 17px; height: 17px; }
+  .file .fbody { min-width: 0; flex: 1; }
+  .fname { font-size: 12.5px; font-weight: 650; word-break: break-all; line-height: 1.3; }
+  .fmeta { font-size: 10px; color: var(--dim); font-family: var(--mono); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .fmeta .up { color: var(--violet); }
+  .qbadge { font-size: 8.5px; font-weight: 800; padding: 2px 6px; border-radius: 6px; letter-spacing: .05em; flex: none; align-self: flex-start; margin-top: 2px; }
+  .qbadge.upto4k { background: rgba(139,92,246,.16); color: #a78bfa; }
+  .qbadge.fhd { background: rgba(59,130,246,.15); color: var(--blue2); }
+  .qbadge.hd { background: rgba(34,211,238,.13); color: var(--cyan); }
+  .qbadge.sd { background: rgba(148,163,184,.14); color: #94a3b8; }
+  .empty { color: var(--dim); font-size: 12px; padding: 26px 8px; text-align: center; line-height: 1.7; }
+  .skel { height: 52px; border-radius: 14px; background: linear-gradient(100deg, var(--surface2) 40%, var(--border) 50%, var(--surface2) 60%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
 
-  .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+  /* ── upload dropzone ─────────────────────────────────────── */
+  .drop {
+    border: 1.5px dashed var(--border-hi); border-radius: 18px; padding: 34px 18px; text-align: center;
+    cursor: pointer; transition: all .2s; position: relative;
+  }
+  .drop:hover { border-color: rgba(59,130,246,.6); background: var(--grad-soft); }
+  .drop.over { border-color: var(--blue); background: var(--grad-soft); transform: scale(1.015); }
+  .drop .dicon {
+    width: 54px; height: 54px; margin: 0 auto 14px; border-radius: 17px; background: var(--grad-soft);
+    display: flex; align-items: center; justify-content: center; color: var(--blue2);
+  }
+  .drop .dicon svg { width: 24px; height: 24px; }
+  .drop b { font-size: 13.5px; display: block; }
+  .drop span { font-size: 11px; color: var(--dim); display: block; margin-top: 5px; line-height: 1.6; }
+  .upbar { margin-top: 16px; display: none; }
+  .upbar.show { display: block; }
+  .upbar .row { display: flex; justify-content: space-between; font-size: 10.5px; font-family: var(--mono); color: var(--dim); margin-bottom: 7px; }
+  .bar { height: 9px; background: var(--surface2); border-radius: 6px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0%; background: var(--grad); border-radius: 6px; transition: width .25s ease; }
+
+  /* ── render engine cards ─────────────────────────────────── */
+  .engines { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 640px) { .engines { grid-template-columns: 1fr; } }
+  .engine {
+    border: 1px solid var(--border); border-radius: 16px; padding: 14px; cursor: pointer;
+    transition: all .2s; position: relative;
+  }
+  .engine:hover { border-color: var(--border-hi); }
+  .engine.on { border-color: rgba(59,130,246,.65); background: var(--grad-soft); }
+  .engine.off { opacity: .5; cursor: not-allowed; }
+  .engine .et { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; }
+  .engine .et svg { width: 15px; height: 15px; color: var(--blue2); }
+  .engine .ed { font-size: 10.5px; color: var(--dim); margin-top: 6px; line-height: 1.55; }
+  .engine .es { font-size: 9px; font-family: var(--mono); margin-top: 7px; color: var(--green); display: none; }
+  .engine.on .es { display: block; }
+
+  /* ── chips ───────────────────────────────────────────────── */
+  .section { margin-bottom: 17px; }
+  .label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim2); font-family: var(--mono); margin-bottom: 9px; display: flex; align-items: center; justify-content: space-between; }
+  .label em { font-style: normal; color: var(--blue2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip {
+    border: 1px solid var(--border); background: var(--surface2); color: var(--text);
+    border-radius: 999px; padding: 7.5px 14px; font-size: 11.5px; font-weight: 650; cursor: pointer;
+    user-select: none; transition: all .18s;
+  }
+  .chip:hover { border-color: var(--border-hi); transform: translateY(-1px); }
+  .chip.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(59,130,246,.3); }
+  .chip[disabled] { opacity: .3; cursor: not-allowed; transform: none !important; }
+  .chip[disabled]::after { content: " ✕"; font-size: 9px; }
+
+  /* ── sliders ─────────────────────────────────────────────── */
+  .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
   @media (max-width: 640px) { .sliders { grid-template-columns: 1fr; } }
-  .srow .top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-  .srow .name { font-size: 12.5px; font-weight: 600; }
-  .srow .val { font-family: var(--mono); font-size: 12px; color: #7fb0ff; }
-  input[type=range] { width: 100%; accent-color: var(--blue); }
-  .check { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 4px 0; cursor: pointer; }
-  .check input { accent-color: var(--blue); width: 16px; height: 16px; }
+  .srow .top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+  .srow .name { font-size: 12px; font-weight: 600; }
+  .srow .val { font-family: var(--mono); font-size: 11.5px; color: var(--blue2); background: rgba(59,130,246,.1); padding: 2px 8px; border-radius: 7px; }
+  input[type=range] {
+    width: 100%; height: 5px; appearance: none; -webkit-appearance: none; outline: none;
+    background: var(--surface2); border-radius: 4px; border: 1px solid var(--border); cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 17px; height: 17px; border-radius: 50%;
+    background: var(--grad); border: 2.5px solid var(--bg2); box-shadow: 0 2px 9px rgba(59,130,246,.45);
+    transition: transform .15s; cursor: grab;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.18); }
+  input[type=range]::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.05); }
+  input[type=range]::-moz-range-thumb {
+    width: 15px; height: 15px; border-radius: 50%; background: #3b82f6;
+    border: 2.5px solid var(--bg2); box-shadow: 0 2px 9px rgba(59,130,246,.45); cursor: grab;
+  }
+  .check { display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 5px 0; cursor: pointer; color: var(--text); }
+  .check input { accent-color: var(--blue); width: 16px; height: 16px; cursor: pointer; }
 
-  #startBtn { width: 100%; margin-top: 6px; background: var(--blue); color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: 16px; padding: 15px; font-size: 15px; font-weight: 700; cursor: pointer; }
-  #startBtn:disabled { opacity: .45; cursor: not-allowed; }
+  /* ── curves editor ───────────────────────────────────────── */
+  .curves-wrap { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  canvas#curves {
+    width: 100%; max-width: 330px; aspect-ratio: 1/1; background: var(--bg2);
+    border: 1px solid var(--border); border-radius: 15px; touch-action: none; cursor: crosshair;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.25);
+  }
+  .curve-side { flex: 1; min-width: 170px; }
+  .curve-tools { display: flex; gap: 8px; margin-top: 10px; }
+  .hint { font-size: 10px; color: var(--dim2); font-family: var(--mono); margin-top: 9px; line-height: 1.6; }
 
-  .status { margin-top: 16px; }
-  .bar { height: 10px; background: var(--surface2); border-radius: 6px; overflow: hidden; }
-  .bar > div { height: 100%; width: 0%; background: linear-gradient(90deg,#1c75fd,#34c759); border-radius: 6px; transition: width .6s ease; }
-  .statline { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 9px; gap: 10px; flex-wrap: wrap; }
-  .phase { font-weight: 700; }
-  .phase.RUNNING, .phase.PROBING, .phase.FINALIZING { color: var(--blue); }
-  .phase.PAUSED { color: var(--amber); }
-  .phase.DONE { color: var(--green); }
-  .phase.FAILED, .phase.CANCELLED { color: var(--red); }
-  .msg { font-size: 12px; color: var(--text); margin-top: 8px; word-break: break-all; }
-  .outpath { font-family: var(--mono); font-size: 11px; color: var(--green); margin-top: 6px; word-break: break-all; }
-  .ctrls { display: flex; gap: 8px; margin-top: 12px; }
-  .ctrls button { flex: 1; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 12px; padding: 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
-  .ctrls button:disabled { opacity: .35; cursor: not-allowed; }
+  /* ── start button ────────────────────────────────────────── */
+  #startBtn {
+    width: 100%; margin-top: 8px; background: var(--grad); color: #fff; border: 0; border-radius: 16px;
+    padding: 16px; font-size: 14.5px; font-weight: 750; cursor: pointer; letter-spacing: .2px;
+    transition: transform .18s, box-shadow .18s, opacity .18s; position: relative; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(59,130,246,.4);
+  }
+  #startBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(59,130,246,.5); }
+  #startBtn:active:not(:disabled) { transform: translateY(0); }
+  #startBtn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+
+  /* ── status / progress ───────────────────────────────────── */
+  .status { margin-top: 18px; display: none; }
+  .status.show { display: block; animation: slideUp .35s ease; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .progress-row { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+  .ring { position: relative; width: 86px; height: 86px; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .track { stroke: var(--surface2); }
+  .ring .fill { stroke: url(#ringGrad); stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  .ring .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 15px; font-weight: 700; }
+  .ring .ph { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); font-size: 7.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--surface-solid); border: 1px solid var(--border); white-space: nowrap; }
+  .statline { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 0; }
+  .statline .l1 { display: flex; gap: 8px; flex-wrap: wrap; }
+  .phase { font-weight: 750; font-size: 11px; font-family: var(--mono); padding: 3.5px 10px; border-radius: 999px; border: 1px solid var(--border); }
+  .phase.RUNNING, .phase.PROBING, .phase.FINALIZING { color: var(--blue2); border-color: rgba(59,130,246,.4); background: rgba(59,130,246,.1); }
+  .phase.PAUSED { color: var(--amber); border-color: rgba(251,191,36,.4); background: rgba(251,191,36,.08); }
+  .phase.DONE, .phase.COMPLETE { color: var(--green); border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.1); }
+  .phase.FAILED, .phase.CANCELLED { color: var(--red); border-color: rgba(248,113,113,.4); background: rgba(248,113,113,.08); }
+  .mini { font-size: 10.5px; font-family: var(--mono); color: var(--dim); }
+  .msg { font-size: 12px; color: var(--text); margin-top: 4px; word-break: break-all; line-height: 1.6; }
+  .outpath { font-family: var(--mono); font-size: 10.5px; color: var(--green); margin-top: 7px; word-break: break-all; }
+  .ctrls { display: flex; gap: 9px; margin-top: 15px; }
+  .ctrls button {
+    flex: 1; border: 1px solid var(--border); background: var(--surface2); color: var(--text);
+    border-radius: 13px; padding: 11px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .18s;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .ctrls button svg { width: 13px; height: 13px; }
+  .ctrls button:hover:not(:disabled) { border-color: var(--border-hi); transform: translateY(-1px); }
+  .ctrls button:disabled { opacity: .3; cursor: not-allowed; }
   .ctrls .pause { color: var(--amber); }
   .ctrls .stop { color: var(--red); }
+  .dl-row { margin-top: 13px; display: none; }
+  .dl-row.show { display: flex; gap: 9px; }
+  .dl-row button { flex: 1; }
 
-  .curves-wrap { margin-top: 8px; }
-  canvas#curves { width: 100%; max-width: 340px; aspect-ratio: 1/1; background: #0a0d12; border: 1px solid var(--border); border-radius: 12px; touch-action: none; cursor: crosshair; }
-  .curve-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
-  .toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); background: #1a1f2b; border: 1px solid var(--border); color: var(--text); border-radius: 12px; padding: 10px 18px; font-size: 12.5px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 90vw; }
-  .toast.show { opacity: 1; }
-  .empty { color: var(--dim); font-size: 12.5px; padding: 18px 4px; text-align: center; }
+  /* ── toast ───────────────────────────────────────────────── */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(14px);
+    background: var(--surface-solid); border: 1px solid var(--border-hi); color: var(--text);
+    border-radius: 14px; padding: 12px 20px; font-size: 12.5px; opacity: 0; pointer-events: none;
+    transition: all .3s; max-width: 88vw; box-shadow: var(--shadow); z-index: 100;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast svg { width: 15px; height: 15px; color: var(--blue2); flex: none; }
+
+  .accordion-body { overflow: hidden; transition: max-height .3s ease; }
+  .foot { text-align: center; color: var(--dim2); font-size: 10.5px; font-family: var(--mono); margin-top: 34px; line-height: 1.8; }
+  .foot a { color: var(--dim); text-decoration: none; }
+  .foot a:hover { color: var(--blue2); }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <symbol id="i-search" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5v-13ZM7 3v18M17 3v18M3 9h4M3 15h4M17 9h4M17 15h4"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M4 16.5v1A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-1"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M7 2.5h10a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 20V4A1.5 1.5 0 0 1 7 2.5Zm2.5 0 4.5 0M11 18.7h2"/></symbol>
+    <symbol id="i-pc" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 5.5A1.5 1.5 0 0 1 4.5 4h15A1.5 1.5 0 0 1 21 5.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 14.5v-9ZM12 18.5v2M8 20.5h8"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 13.5A8.5 8.5 0 0 1 10.5 4a8.5 8.5 0 1 0 9.5 9.5Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path fill="currentColor" d="M7 5.5h3.2v13H7zM13.8 5.5H17v13h-3.2z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.3c0-1 1.1-1.6 2-1.1l9.1 5.7a1.3 1.3 0 0 1 0 2.2L10 17.8c-.9.5-2-.1-2-1.1V5.3Z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0-4.5-4.5M12 16l4.5-4.5M4 19.5h16"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.58 9.58 0 0 1 5 0C17.4 4.6 18.24 4.87 18.24 4.87c.55 1.37.2 2.39.1 2.64.64.7 1.03 1.6 1.03 2.69 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 11v6"/><circle cx="12" cy="7.6" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.5 5 5 10-11"/></symbol>
+    <symbol id="i-tune" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 8h9m4 0h3M4 16h3m4 0h9"/><circle cx="15" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="16" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-curves" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 20V4M4 20h16M5 19c3-1 4.5-4.5 8-7.5 2-1.7 4.5-3 7-3.5"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path fill="currentColor" d="M13.2 2.1 4.5 13.4c-.3.4 0 1 .5 1h4.5l-1.8 7.1c-.2.7.7 1.1 1.1.5l9-11.6c.3-.4 0-1-.5-1h-4.6l1.5-6.8c.1-.6-.7-1-1-.5Z"/></symbol>
+  </defs>
+</svg>
+<div class="aurora"></div>
 <div class="wrap">
+
   <header>
     <div class="logo">HDR</div>
-    <div>
-      <h1>SDR2HDR <span style="color:var(--dim);font-size:14px;font-family:var(--mono)">remote</span></h1>
-      <div class="sub" id="devInfo">connecting…</div>
+    <div class="htxt">
+      <h1>SDR2HDR <span class="hbadge">Remote Studio</span></h1>
+      <div class="sub" id="devInfo"><span class="dot"></span>connecting…</div>
     </div>
     <div class="spacer"></div>
-    <button class="pill-btn danger" id="stopServerBtn">Stop server</button>
+    <button class="icon-btn" id="themeBtn" title="Toggle theme"><svg id="themeIcon"><use href="#i-moon"/></svg></button>
+    <a class="icon-btn" href="https://github.com/devfahim00/SDR2HDR" target="_blank" rel="noopener" title="GitHub repository" style="text-decoration:none"><svg><use href="#i-github"/></svg></a>
+    <button class="pill-btn danger" id="stopServerBtn"><svg style="width:12px;height:12px;vertical-align:-1.5px;margin-right:6px"><use href="#i-stop"/></svg>Stop server</button>
   </header>
 
+  <div class="stats">
+    <div class="stat"><div class="k">Device</div><div class="v" id="stDevice">—</div></div>
+    <div class="stat"><div class="k">Version</div><div class="v gradient" id="stVersion">—</div></div>
+    <div class="stat"><div class="k">Render engine</div><div class="v" id="stEngine">Phone (server)</div></div>
+    <div class="stat"><div class="k">Server</div><div class="v" id="stServer" style="font-family:var(--mono);font-size:11px">—</div></div>
+  </div>
+
   <div class="grid">
-    <!-- left: file picker -->
-    <div class="card">
-      <h2>Pick a video</h2>
-      <input class="search" id="search" placeholder="Search videos…" autocomplete="off">
-      <div id="files"><div class="empty">Loading device videos…</div></div>
-    </div>
-
-    <!-- right: controls -->
-    <div class="card">
-      <h2>Conversion settings</h2>
-      <div id="selected" class="file" style="display:none; margin-bottom:16px;">
-        <div class="fname"></div>
-        <div class="fmeta"></div>
-      </div>
-
-      <div class="section">
-        <span class="label">HDR format</span>
-        <div class="chips" id="gFormat"></div>
-      </div>
-      <div class="section">
-        <span class="label">Resolution</span>
-        <div class="chips" id="gRes"></div>
-      </div>
-      <div class="section">
-        <span class="label">Dynamic metadata</span>
-        <div class="chips" id="gDyn"></div>
-      </div>
-      <div class="section">
-        <span class="label">Codec</span>
-        <div class="chips" id="gCodec"></div>
-      </div>
-      <div class="section">
-        <span class="label">GPU decode</span>
-        <div class="chips" id="gGpu"></div>
-      </div>
-      <div class="section">
-        <span class="label">Threads</span>
-        <div class="chips" id="gThreads"></div>
-      </div>
-      <div class="section">
-        <span class="label">Encoder speed</span>
-        <div class="chips" id="gPreset"></div>
-      </div>
-      <div class="section">
-        <span class="label">Tone mapping</span>
-        <div class="chips" id="gTone"></div>
-      </div>
-
-      <div class="section sliders" id="basicSliders">
-        <div class="srow"><div class="top"><span class="name">Exposure</span><span class="val" id="vExp"></span></div><input type="range" id="sExp" min="-3" max="2" step="0.05" value="0.25"></div>
-        <div class="srow"><div class="top"><span class="name">Highlight (nits)</span><span class="val" id="vHl"></span></div><input type="range" id="sHl" min="100" max="400" step="10" value="240"></div>
-        <div class="srow"><div class="top"><span class="name">Saturation</span><span class="val" id="vSat"></span></div><input type="range" id="sSat" min="0" max="2" step="0.05" value="1.25"></div>
-        <div class="srow"><div class="top"><span class="name">Sharpness</span><span class="val" id="vSharp"></span></div><input type="range" id="sSharp" min="0" max="100" step="1" value="0"></div>
-      </div>
-
-      <div class="section">
-        <span class="label">Advanced grading</span>
-        <div class="chips" id="gAdv" style="margin-bottom:12px">
-          <div class="chip def" data-on="0" id="advToggle">Show advanced controls</div>
+    <!-- left column: source -->
+    <div>
+      <div class="card">
+        <div class="card-title">
+          <div class="ic"><svg><use href="#i-film"/></svg></div>
+          <h2>Video source</h2>
         </div>
-        <div class="sliders" id="advSliders" style="display:none">
-          <div class="srow"><div class="top"><span class="name">Contrast</span><span class="val" id="vCon"></span></div><input type="range" id="sCon" min="0.5" max="2" step="0.05" value="1"></div>
-          <div class="srow"><div class="top"><span class="name">Gamma</span><span class="val" id="vGam"></span></div><input type="range" id="sGam" min="0.5" max="2" step="0.05" value="1"></div>
-          <div class="srow"><div class="top"><span class="name">Brightness</span><span class="val" id="vBri"></span></div><input type="range" id="sBri" min="-0.25" max="0.25" step="0.01" value="0"></div>
-          <div class="srow"><div class="top"><span class="name">Temperature (K)</span><span class="val" id="vTemp"></span></div><input type="range" id="sTemp" min="2500" max="8000" step="100" value="6500"></div>
-          <div class="srow"><div class="top"><span class="name">Tint</span><span class="val" id="vTint"></span></div><input type="range" id="sTint" min="-0.25" max="0.25" step="0.01" value="0"></div>
-        </div>
-      </div>
 
-      <div class="section">
-        <span class="label">RGB curves</span>
-        <div class="chips" id="gCurveCh" style="margin-bottom:10px"></div>
-        <div class="curves-wrap">
-          <canvas id="curves" width="340" height="340"></canvas>
-          <div class="curve-tools">
-            <span class="hint">tap: add · drag: move · double-tap: delete</span>
-            <button class="pill-btn" id="curveReset">Reset</button>
+        <div class="seg">
+          <button id="tabPhone" class="on"><svg><use href="#i-phone"/></svg>Phone videos</button>
+          <button id="tabUpload"><svg><use href="#i-upload"/></svg>Upload from this device</button>
+        </div>
+
+        <div id="panePhone">
+          <div class="search-wrap">
+            <svg><use href="#i-search"/></svg>
+            <input class="search" id="search" placeholder="Search videos…" autocomplete="off">
+          </div>
+          <div id="files">
+            <div class="skel"></div><div class="skel"></div><div class="skel"></div>
           </div>
         </div>
+
+        <div id="paneUpload" style="display:none">
+          <div class="drop" id="drop">
+            <div class="dicon"><svg><use href="#i-upload"/></svg></div>
+            <b>Drop a video here or tap to browse</b>
+            <span>Files are sent to <span id="upDirHint">the phone</span> over Wi-Fi —<br>then converted on the phone, or rendered right here on this PC.</span>
+            <input type="file" id="fileInput" accept="video/*,.mp4,.mkv,.mov,.webm" multiple hidden>
+          </div>
+          <div class="upbar" id="upbar">
+            <div class="row"><span id="upName">—</span><span id="upPct">0%</span></div>
+            <div class="bar"><div id="upFill"></div></div>
+            <div class="hint" id="upSpeed"></div>
+          </div>
+          <div class="hint" style="margin-top:14px">Tip: if you plan to render on this PC, the file never needs to reach the phone — pick it in the “This PC” engine card instead.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- right column: engine + settings -->
+    <div>
+      <div class="card">
+        <div class="card-title">
+          <div class="ic"><svg><use href="#i-bolt"/></svg></div>
+          <h2>Render engine</h2>
+          <span class="tag" id="engineTag">where the work happens</span>
+        </div>
+        <div class="engines">
+          <div class="engine on" id="engPhone">
+            <div class="et"><svg><use href="#i-phone"/></svg>Phone · this server</div>
+            <div class="ed">FFmpeg runs on the phone as before — full 10-bit HDR pipeline with Dolby Vision / HDR10+ metadata.</div>
+            <div class="es" id="engPhoneStat"></div>
+          </div>
+          <div class="engine" id="engPc">
+            <div class="et"><svg><use href="#i-pc"/></svg>This PC · browser render</div>
+            <div class="ed" id="engPcDesc">Uses this computer’s CPU/GPU (WebCodecs + WebGL) so the phone stays cool. Output: HDR-marked WebM.</div>
+            <div class="es" id="engPcStat"></div>
+          </div>
+        </div>
+        <input type="file" id="pcFileInput" accept="video/*,.mp4,.mkv,.mov,.webm" hidden>
+        <div class="hint" id="engPcNote" style="display:none">No file picked for the PC engine yet — <b id="pcPickBtn" style="cursor:pointer;color:var(--blue2);text-decoration:underline">choose a local video</b> or select one from the phone list (it will be fetched over Wi-Fi).</div>
+        <div id="pcPicked" style="display:none;margin-top:10px" class="file sel"><div class="ficon"><svg><use href="#i-pc"/></svg></div><div class="fbody"><div class="fname" id="pcPickedName"></div><div class="fmeta"><span id="pcPickedMeta"></span></div></div><div class="spacer"></div><button class="icon-btn" id="pcPickedClear" style="width:32px;height:32px"><svg><use href="#i-stop"/></svg></button></div>
       </div>
 
-      <label class="check"><input type="checkbox" id="cHdrIn"> Allow HDR input (regrade instead of refusing)</label>
-
-      <button id="startBtn">Convert to HDR10</button>
-
-      <div class="status" id="statusBox" style="display:none">
-        <div class="bar"><div id="barFill"></div></div>
-        <div class="statline">
-          <span class="phase" id="stPhase">—</span>
-          <span id="stPct">0%</span>
-          <span id="stFps"></span>
-          <span id="stEta"></span>
+      <div class="card">
+        <div class="card-title">
+          <div class="ic"><svg><use href="#i-tune"/></svg></div>
+          <h2>Conversion settings</h2>
         </div>
-        <div class="msg" id="stMsg"></div>
-        <div class="outpath" id="stOut"></div>
-        <div class="ctrls">
-          <button class="pause" id="btnPause">Pause</button>
-          <button id="btnResume">Resume</button>
-          <button class="stop" id="btnStop">Stop</button>
+        <div id="selected" class="file sel" style="display:none; margin-bottom:16px">
+          <div class="ficon"><svg><use href="#i-film"/></svg></div>
+          <div class="fbody"><div class="fname"></div><div class="fmeta"></div></div>
+        </div>
+
+        <div class="section">
+          <span class="label">HDR format <em id="lblFormat"></em></span>
+          <div class="chips" id="gFormat"></div>
+        </div>
+        <div class="section">
+          <span class="label">Resolution</span>
+          <div class="chips" id="gRes"></div>
+        </div>
+        <div class="section" id="secDyn">
+          <span class="label">Dynamic metadata</span>
+          <div class="chips" id="gDyn"></div>
+        </div>
+        <div class="section">
+          <span class="label">Codec</span>
+          <div class="chips" id="gCodec"></div>
+        </div>
+        <div class="section" id="secGpu">
+          <span class="label">GPU decode</span>
+          <div class="chips" id="gGpu"></div>
+        </div>
+        <div class="section" id="secThreads">
+          <span class="label">Threads</span>
+          <div class="chips" id="gThreads"></div>
+        </div>
+        <div class="section">
+          <span class="label">Encoder speed</span>
+          <div class="chips" id="gPreset"></div>
+        </div>
+        <div class="section">
+          <span class="label">Tone mapping</span>
+          <div class="chips" id="gTone"></div>
+        </div>
+
+        <div class="section sliders" id="basicSliders">
+          <div class="srow"><div class="top"><span class="name">Exposure</span><span class="val" id="vExp"></span></div><input type="range" id="sExp" min="-3" max="2" step="0.05" value="0.25"></div>
+          <div class="srow"><div class="top"><span class="name">Highlight (nits)</span><span class="val" id="vHl"></span></div><input type="range" id="sHl" min="100" max="400" step="10" value="240"></div>
+          <div class="srow"><div class="top"><span class="name">Saturation</span><span class="val" id="vSat"></span></div><input type="range" id="sSat" min="0" max="2" step="0.05" value="1.25"></div>
+          <div class="srow"><div class="top"><span class="name">Sharpness</span><span class="val" id="vSharp"></span></div><input type="range" id="sSharp" min="0" max="100" step="1" value="0"></div>
+        </div>
+
+        <div class="section">
+          <span class="label">Advanced grading</span>
+          <div class="chips" style="margin-bottom:13px">
+            <div class="chip" data-on="0" id="advToggle">Show advanced controls</div>
+          </div>
+          <div class="sliders accordion-body" id="advSliders" style="max-height:0">
+            <div class="srow"><div class="top"><span class="name">Contrast</span><span class="val" id="vCon"></span></div><input type="range" id="sCon" min="0.5" max="2" step="0.05" value="1"></div>
+            <div class="srow"><div class="top"><span class="name">Gamma</span><span class="val" id="vGam"></span></div><input type="range" id="sGam" min="0.5" max="2" step="0.05" value="1"></div>
+            <div class="srow"><div class="top"><span class="name">Brightness</span><span class="val" id="vBri"></span></div><input type="range" id="sBri" min="-0.25" max="0.25" step="0.01" value="0"></div>
+            <div class="srow"><div class="top"><span class="name">Temperature (K)</span><span class="val" id="vTemp"></span></div><input type="range" id="sTemp" min="2500" max="8000" step="100" value="6500"></div>
+            <div class="srow"><div class="top"><span class="name">Tint</span><span class="val" id="vTint"></span></div><input type="range" id="sTint" min="-0.25" max="0.25" step="0.01" value="0"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <span class="label">RGB curves</span>
+          <div class="curves-wrap">
+            <canvas id="curves" width="340" height="340"></canvas>
+            <div class="curve-side">
+              <div class="chips" id="gCurveCh"></div>
+              <div class="curve-tools">
+                <button class="pill-btn" id="curveReset">Reset channel</button>
+              </div>
+              <div class="hint">tap: add point · drag: move ·<br>double-tap: delete</div>
+            </div>
+          </div>
+        </div>
+
+        <label class="check"><input type="checkbox" id="cHdrIn"> Allow HDR input (regrade instead of refusing)</label>
+
+        <button id="startBtn">Convert to HDR10</button>
+
+        <div class="status" id="statusBox">
+          <div class="progress-row">
+            <div class="ring">
+              <svg viewBox="0 0 100 100">
+                <circle class="track" cx="50" cy="50" r="42" fill="none" stroke-width="8"/>
+                <circle class="fill" id="ringFill" cx="50" cy="50" r="42" fill="none" stroke-width="8" stroke-dasharray="263.9" stroke-dashoffset="263.9"/>
+              </svg>
+              <div class="pct" id="stPct">0%</div>
+              <div class="ph" id="stPhaseChip">—</div>
+            </div>
+            <div class="statline">
+              <div class="l1">
+                <span class="phase" id="stPhase">—</span>
+                <span class="mini" id="stFps"></span>
+                <span class="mini" id="stEta"></span>
+                <span class="mini" id="stSeg"></span>
+              </div>
+              <div class="mini" id="stIn"></div>
+              <div class="msg" id="stMsg"></div>
+              <div class="outpath" id="stOut"></div>
+            </div>
+          </div>
+          <div class="bar" style="height:7px"><div id="barFill"></div></div>
+          <div class="ctrls">
+            <button class="pause" id="btnPause"><svg><use href="#i-pause"/></svg>Pause</button>
+            <button id="btnResume"><svg><use href="#i-play"/></svg>Resume</button>
+            <button class="stop" id="btnStop"><svg><use href="#i-stop"/></svg>Stop</button>
+          </div>
+          <div class="dl-row" id="dlRow">
+            <button class="pill-btn" id="btnDlOut"><svg style="width:13px;height:13px;vertical-align:-2px;margin-right:6px"><use href="#i-down"/></svg>Download result to this device</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-<div class="toast" id="toast"></div>
 
+  <div class="foot">
+    SDR2HDR · SDR → HDR10 / HLG / HDR10+ / Dolby Vision 8.1 · FFmpeg-powered<br>
+    <a href="https://github.com/devfahim00/SDR2HDR" target="_blank" rel="noopener">github.com/devfahim00/SDR2HDR</a> ·
+    <a href="https://t.me/droxilen" target="_blank" rel="noopener">t.me/droxilen</a> ·
+    <a href="https://t.me/projectredfox" target="_blank" rel="noopener">t.me/projectredfox</a>
+  </div>
+</div>
+<div class="toast" id="toast"><svg><use href="#i-info"/></svg><span id="toastTxt"></span></div>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 const state = {
-  file: null,
+  file: null,          // selected phone-side video {path,name,size,...}
   files: [],
   caps: null,
+  info: null,
   adv: false,
+  tab: "phone",
+  engine: "phone",     // "phone" | "pc"
+  pcFile: null,        // local File for PC render (or phone file descriptor {fromPhone:true,path,...})
   curves: { master: [[0,0],[1,1]], r: [[0,0],[1,1]], g: [[0,0],[1,1]], b: [[0,0],[1,1]] },
   curveCh: "master",
   polling: null,
+  busy: false,         // PC render in progress
 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -236,12 +591,12 @@ async function api(path, opts) {
   if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
   return j;
 }
-function toast(msg) {
-  const t = $("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => t.classList.remove("show"), 2600);
+let toastT;
+function toast(msg, ms) {
+  $("toastTxt").textContent = msg;
+  $("toast").classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => $("toast").classList.remove("show"), ms || 2800);
 }
 const fmtMB = (b) => (b / 1048576).toFixed(1) + " MB";
 const fmtDur = (ms) => {
@@ -249,58 +604,205 @@ const fmtDur = (ms) => {
   const s = Math.round(ms / 1000);
   return s >= 3600 ? `${(s/3600)|0}:${String((s%3600/60)|0).padStart(2,"0")}:${String(s%60).padStart(2,"0")}` : `${(s/60)|0}:${String(s%60).padStart(2,"0")}`;
 };
+const qualityBadge = (w, h) => {
+  const m = Math.max(w || 0, h || 0);
+  if (m >= 3000) return `<span class="qbadge upto4k">4K+</span>`;
+  if (m >= 1900) return `<span class="qbadge fhd">FHD</span>`;
+  if (m >= 1200) return `<span class="qbadge hd">HD</span>`;
+  return `<span class="qbadge sd">SD</span>`;
+};
+
+// ── theme ─────────────────────────────────────────────────────────────────────
+(function theme() {
+  const saved = localStorage.getItem("sdr2hdr-theme") || "dark";
+  apply(saved);
+  $("themeBtn").onclick = () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    localStorage.setItem("sdr2hdr-theme", next);
+    apply(next);
+  };
+  function apply(t) {
+    document.documentElement.dataset.theme = t;
+    $("themeIcon").innerHTML = `<use href="${t === "dark" ? "#i-sun" : "#i-moon"}"/>`;
+  }
+})();
+
+// ── tabs ──────────────────────────────────────────────────────────────────────
+$("tabPhone").onclick = () => switchTab("phone");
+$("tabUpload").onclick = () => switchTab("upload");
+function switchTab(t) {
+  state.tab = t;
+  $("tabPhone").classList.toggle("on", t === "phone");
+  $("tabUpload").classList.toggle("on", t === "upload");
+  $("panePhone").style.display = t === "phone" ? "" : "none";
+  $("paneUpload").style.display = t === "upload" ? "" : "none";
+}
 
 // ── chip groups ───────────────────────────────────────────────────────────────
+const PHONE_CODECS = { hevc: "HEVC · x265", hevchw: "HEVC · MediaCodec", h264hw: "H.264 · MediaCodec", vp9: "VP9", av1: "AV1" };
+const PC_CODECS = { vp9: "VP9 (WebM HDR)", av1: "AV1 (WebM HDR)", hevc: "HEVC (if supported)" };
 const GROUPS = {
   gFormat: { def: "pq", map: { pq: "HDR10 · PQ", hlg: "HLG · BT.2100" }, key: "format" },
   gRes:    { def: "source", map: { source: "Original", "720p": "720p", "1080p": "1080p", "2k": "2K", "4k": "4K", "8k": "8K" }, key: "resolution" },
   gDyn:    { def: "none", map: { none: "None", hdr10plus: "HDR10+", dv81: "Dolby Vision 8.1" }, key: "dyn" },
-  gCodec:  { def: "hevc", map: { hevc: "HEVC · x265", hevchw: "HEVC · MediaCodec", h264hw: "H.264 · MediaCodec", vp9: "VP9", av1: "AV1" }, key: "codec" },
+  gCodec:  { def: "hevc", map: PHONE_CODECS, key: "codec" },
   gGpu:    { def: "off", map: { off: "CPU", mediacodec: "MediaCodec", vulkan: "Vulkan" }, key: "gpu" },
   gThreads:{ def: "0", map: { "0": "Auto", "2": "2", "4": "4", "6": "6", "8": "8" }, key: "threads" },
   gPreset: { def: "fast", map: { ultrafast: "Ultrafast", fast: "Fast", medium: "Medium", slow: "Slow" }, key: "preset" },
   gTone:   { def: "none", map: { none: "Linear", reinhard: "Reinhard", hable: "Hable", mobius: "Mobius" }, key: "tonemap" },
 };
 const sel = {};
-for (const [gid, g] of Object.entries(GROUPS)) {
-  sel[g.key] = g.def;
-  const box = $(gid);
-  for (const [k, label] of Object.entries(g.map)) {
-    const el = document.createElement("div");
-    el.className = "chip" + (k === g.def ? " def" : "") + (k === g.def ? " on" : "");
-    el.textContent = label;
-    el.dataset.k = k;
-    el.onclick = () => {
-      if (el.getAttribute("disabled")) return;
-      sel[g.key] = k;
-      box.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === el));
-      if (g.key === "format") $("startBtn").textContent = k === "hlg" ? "Convert to HLG" : "Convert to HDR10";
-    };
-    box.appendChild(el);
-    g.map[k] = g.map[k]; // no-op
-    (g._els || (g._els = {}))[k] = el;
+function buildChips() {
+  for (const [gid, g] of Object.entries(GROUPS)) {
+    sel[g.key] = sel[g.key] || g.def;
+    const box = $(gid);
+    box.innerHTML = "";
+    for (const [k, label] of Object.entries(g.map)) {
+      const el = document.createElement("div");
+      el.className = "chip" + (k === sel[g.key] ? " on" : "");
+      el.textContent = label;
+      el.dataset.k = k;
+      el.onclick = () => {
+        if (el.getAttribute("disabled")) return;
+        sel[g.key] = k;
+        box.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === el));
+        onOptionChanged();
+      };
+      box.appendChild(el);
+      (g._els || (g._els = {}))[k] = el;
+    }
   }
 }
+function reselectChip(key) {
+  const gid = Object.keys(GROUPS).find(g => GROUPS[g].key === key);
+  if (!gid) return;
+  const g = GROUPS[gid];
+  if (!g.map[sel[key]]) sel[key] = g.def;
+  for (const [k, el] of Object.entries(g._els || {})) {
+    el.classList.toggle("on", k === sel[key]);
+    if (state.engine === "pc") {
+      if (el.getAttribute("disabled") && k === sel[key]) { /* keep, gating applied later */ }
+    }
+  }
+}
+function onOptionChanged() {
+  $("startBtn").textContent =
+    state.engine === "pc"
+      ? `Render on this PC → ${sel.format === "hlg" ? "HLG" : "HDR10"} WebM`
+      : (sel.format === "hlg" ? "Convert to HLG" : "Convert to HDR10");
+  $("lblFormat").textContent = state.engine === "pc" ? "8-bit PQ/HLG tagged (beta)" : "";
+  $("stEngine").textContent = state.engine === "pc" ? "This PC (browser)" : "Phone (server)";
+}
 
-// capability gating (hevc_hw/av1/vp9/mediacodec/vulkan/dv/hdr10+ not always present)
+// capability gating for the phone pipeline
 function applyCaps(caps) {
   state.caps = caps;
   const G = GROUPS;
   const disable = (gid, key, ok) => { const el = G[gid]._els[key]; if (!ok) el.setAttribute("disabled", ""); };
-  disable("gCodec", "av1", caps.av1);
-  disable("gCodec", "hevchw", caps.hevcHw);
-  disable("gCodec", "h264hw", caps.h264Hw);
-  disable("gCodec", "vp9", caps.vp9);
-  disable("gGpu", "mediacodec", caps.mediacodec);
-  disable("gGpu", "vulkan", caps.vulkan);
+  disable("gCodec", "av1", !!caps.av1);
+  disable("gCodec", "hevchw", !!caps.hevcHw);
+  disable("gCodec", "h264hw", !!caps.h264Hw);
+  disable("gCodec", "vp9", !!caps.vp9);
+  disable("gGpu", "mediacodec", !!caps.mediacodec);
+  disable("gGpu", "vulkan", !!caps.vulkan);
   disable("gDyn", "dv81", !!caps.dolbyVision);
   disable("gDyn", "hdr10plus", !!caps.hdr10plus);
 }
 
-// ── sliders ──────────────────────────────────────────────────────────────────
+// ── engine switch ─────────────────────────────────────────────────────────────
+const PC_OK = !!window.VideoEncoder && !!window.VideoFrame && !!window.HTMLVideoElement;
+const IS_MOBILE = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+$("engPhone").onclick = () => setEngine("phone");
+$("engPc").onclick = () => { if (PC_OK && !state.busy) setEngine("pc"); };
+function setEngine(e) {
+  if (state.busy) return;
+  state.engine = e;
+  $("engPhone").classList.toggle("on", e === "phone");
+  $("engPc").classList.toggle("on", e === "pc");
+  if (e === "pc") {
+    // PC render: codec list changes, phone-only sections hide
+    GROUPS.gCodec.map = PC_CODECS;
+    GROUPS.gCodec.def = GROUPS.gCodec.def || "vp9";
+    if (!PC_CODECS[sel.codec]) sel.codec = "vp9";
+    ["secDyn", "secGpu", "secThreads"].forEach(id => $(id).style.display = "none");
+    probePcCodecs();
+  } else {
+    GROUPS.gCodec.map = PHONE_CODECS;
+    if (!PHONE_CODECS[sel.codec]) sel.codec = "hevc";
+    ["secDyn", "secGpu", "secThreads"].forEach(id => $(id).style.display = "");
+    applyCaps(state.caps || {});
+  }
+  buildChips();
+  if (e === "phone") {
+    // phone-mode capability gating; PC mode is gated by probePcCodecs() instead
+    if (state.caps) applyCaps(state.caps);
+  }
+  refreshPcPickRow();
+  onOptionChanged();
+}
+function refreshPcPickRow() {
+  const has = !!state.pcFile;
+  $("engPcNote").style.display = state.engine === "pc" && !has ? "" : "none";
+  $("pcPicked").style.display = state.engine === "pc" && has ? "" : "none";
+  if (has) {
+    $("pcPickedName").textContent = state.pcFile.name;
+    const meta = [];
+    if (state.pcFile.size) meta.push(fmtMB(state.pcFile.size));
+    if (state.pcFile.fromPhone) meta.push("fetched from phone");
+    else meta.push("local file");
+    $("pcPickedMeta").textContent = meta.join("  ·  ");
+  }
+}
+$("pcPickBtn").onclick = () => $("pcFileInput").click();
+$("pcFileInput").onchange = (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  state.pcFile = { name: f.name, size: f.size, file: f, fromPhone: false };
+  refreshPcPickRow();
+  onOptionChanged();
+  toast(`Picked ${f.name} — renders locally, nothing is uploaded`);
+};
+$("pcPickedClear").onclick = () => { state.pcFile = null; refreshPcPickRow(); onOptionChanged(); };
+
+// probe which codecs this browser can actually encode
+let pcCodecProbe = {};
+async function probePcCodecs() {
+  if (!PC_OK) return;
+  const tryCodec = async (codecString, hw) => {
+    try {
+      const cfg = {
+        codec: codecString, width: 1920, height: 1080, framerate: 30,
+        bitrate: 8_000_000, latencyMode: "quality",
+        hardwareAcceleration: hw ? "prefer-hardware" : "no-preference",
+        color: { primaries: "bt2020", transfer: "smpte2084", matrix: "bt2020nc" },
+      };
+      const s = await VideoEncoder.isConfigSupported(cfg);
+      return !!(s && s.supported);
+    } catch (_) { return false; }
+  };
+  pcCodecProbe = {
+    vp9: await tryCodec("vp09.00.10.08", true) || await tryCodec("vp09.00.10.08", false),
+    av1: await tryCodec("av01.0.08M.08", true) || await tryCodec("av01.0.08M.08", false),
+    hevc: await tryCodec("hvc1.2.4.L153.B00", true) || await tryCodec("hvc1.2.4.L153.B00", false),
+  };
+  for (const [k, ok] of Object.entries(pcCodecProbe)) {
+    const el = GROUPS.gCodec._els && GROUPS.gCodec._els[k];
+    if (!el) continue;
+    if (ok) el.removeAttribute("disabled");
+    else el.setAttribute("disabled", "");
+  }
+  if (!pcCodecProbe[sel.codec]) {
+    const firstOk = ["vp9", "av1", "hevc"].find(k => pcCodecProbe[k]);
+    if (firstOk) { sel.codec = firstOk; reselectChip("codec"); }
+  }
+  const okList = Object.entries(pcCodecProbe).filter(([, v]) => v).map(([k]) => k.toUpperCase()).join(" · ") || "none";
+  $("engPcStat").textContent = `encoders available: ${okList}`;
+}
+
+// ── sliders ───────────────────────────────────────────────────────────────────
 function bindSlider(sid, vid, fmt) {
   const s = $(sid), v = $(vid);
-  const upd = () => { v.textContent = fmt(parseFloat(s.value)); };
+  const upd = () => { v.textContent = fmt(parseFloat(s.value)); if (state.engine === "pc") bakeLut(); };
   s.addEventListener("input", upd);
   upd();
 }
@@ -316,17 +818,17 @@ bindSlider("sTint", "vTint", v => v.toFixed(2));
 
 $("advToggle").onclick = () => {
   state.adv = !state.adv;
-  $("advSliders").style.display = state.adv ? "grid" : "none";
+  $("advSliders").style.maxHeight = state.adv ? "420px" : "0";
   $("advToggle").textContent = state.adv ? "Hide advanced controls" : "Show advanced controls";
   $("advToggle").classList.toggle("on", state.adv);
 };
 
-// ── curves editor ────────────────────────────────────────────────────────────
-const CH_COLORS = { master: "#f2f4f8", r: "#eb5d6b", g: "#34c759", b: "#1c75fd" };
+// ── curves editor ─────────────────────────────────────────────────────────────
+const CH_COLORS = { master: "#eef1f7", r: "#f87171", g: "#34d399", b: "#60a5fa" };
 const CH_LABELS = { master: "Master", r: "R", g: "G", b: "B" };
 for (const ch of ["master", "r", "g", "b"]) {
   const el = document.createElement("div");
-  el.className = "chip" + (ch === "master" ? " def on" : "");
+  el.className = "chip" + (ch === "master" ? " on" : "");
   el.textContent = CH_LABELS[ch];
   el.onclick = () => {
     state.curveCh = ch;
@@ -343,13 +845,13 @@ function ix(pxv) { return Math.min(1, Math.max(0, (pxv - PAD) / (cv.width - 2 * 
 function iy(pyv) { return Math.min(1, Math.max(0, (cv.height - PAD - pyv) / (cv.height - 2 * PAD))); }
 function drawCurves() {
   cx.clearRect(0, 0, cv.width, cv.height);
-  cx.strokeStyle = "rgba(255,255,255,.08)";
+  cx.strokeStyle = "rgba(128,140,170,.14)";
   for (let i = 1; i < 4; i++) {
     cx.beginPath(); cx.moveTo(px(i / 4), py(0)); cx.lineTo(px(i / 4), py(1)); cx.stroke();
     cx.beginPath(); cx.moveTo(px(0), py(i / 4)); cx.lineTo(px(1), py(i / 4)); cx.stroke();
   }
   cx.setLineDash([5, 5]);
-  cx.strokeStyle = "rgba(255,255,255,.22)";
+  cx.strokeStyle = "rgba(128,140,170,.3)";
   cx.beginPath(); cx.moveTo(px(0), py(0)); cx.lineTo(px(1), py(1)); cx.stroke();
   cx.setLineDash([]);
   const act = state.curves[state.curveCh];
@@ -357,9 +859,9 @@ function drawCurves() {
   for (const [ch, pts] of Object.entries(state.curves)) {
     if (ch === state.curveCh) continue;
     if (neutral(pts) && ch !== "master") continue;
-    strokeCurve(pts, CH_COLORS[ch], 0.28);
+    strokeCurve(pts, CH_COLORS[ch], 0.25);
   }
-  if (state.curveCh !== "master") strokeCurve(state.curves.master, CH_COLORS.master, 0.22);
+  if (state.curveCh !== "master") strokeCurve(state.curves.master, CH_COLORS.master, 0.2);
   strokeCurve(act, CH_COLORS[state.curveCh], 1);
   for (const [x, y] of act) {
     cx.fillStyle = "#fff";
@@ -377,7 +879,7 @@ function strokeCurve(pts, color, alpha) {
   cx.stroke();
   cx.globalAlpha = 1;
 }
-function sample(pts, steps) { // monotone-ish: just dense linear interpolation of a Catmull-Rom
+function sample(pts, steps) {
   if (pts.length < 2) return pts;
   const out = [];
   for (let i = 0; i < pts.length - 1; i++) {
@@ -421,6 +923,7 @@ function cvDown(e) {
     dragIdx = at;
   }
   drawCurves();
+  if (state.engine === "pc") bakeLut();
 }
 function cvMove(e) {
   if (dragIdx < 0) return;
@@ -434,12 +937,12 @@ function cvMove(e) {
   pts[dragIdx] = [nx, iy(y)];
   drawCurves();
 }
-function cvUp() { dragIdx = -1; }
+function cvUp() { dragIdx = -1; if (state.engine === "pc") bakeLut(); }
 function cvDbl(e) {
   const [x, y] = evtPos(e);
   const n = nearest(x, y);
   const pts = state.curves[state.curveCh];
-  if (n > 0 && n < pts.length - 1) { pts.splice(n, 1); drawCurves(); }
+  if (n > 0 && n < pts.length - 1) { pts.splice(n, 1); drawCurves(); if (state.engine === "pc") bakeLut(); }
 }
 cv.addEventListener("mousedown", cvDown); cv.addEventListener("mousemove", cvMove);
 window.addEventListener("mouseup", cvUp);
@@ -447,46 +950,126 @@ cv.addEventListener("touchstart", cvDown, { passive: false });
 cv.addEventListener("touchmove", cvMove, { passive: false });
 cv.addEventListener("touchend", cvUp);
 cv.addEventListener("dblclick", cvDbl);
-$("curveReset").onclick = () => { state.curves[state.curveCh] = [[0, 0], [1, 1]]; drawCurves(); };
+$("curveReset").onclick = () => { state.curves[state.curveCh] = [[0, 0], [1, 1]]; drawCurves(); if (state.engine === "pc") bakeLut(); };
 drawCurves();
 
-// ── file list ────────────────────────────────────────────────────────────────
+// ── file list (phone) ─────────────────────────────────────────────────────────
 async function loadFiles() {
   try {
     const j = await api("/api/files");
     state.files = j.files || [];
     renderFiles("");
   } catch (e) {
-    $("files").innerHTML = `<div class="empty">Could not list videos: ${e.message}</div>`;
+    $("files").innerHTML = `<div class="empty">Could not list videos:<br>${e.message}</div>`;
   }
 }
 function renderFiles(q) {
   const box = $("files");
   const list = state.files.filter(f => f.name.toLowerCase().includes(q.toLowerCase()));
-  if (!list.length) { box.innerHTML = `<div class="empty">No videos found.</div>`; return; }
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">No videos found.<br>Upload one from the other tab —<br>or from another device entirely.</div>`;
+    return;
+  }
   box.innerHTML = "";
   for (const f of list) {
     const el = document.createElement("div");
     el.className = "file" + (state.file && state.file.path === f.path ? " sel" : "");
-    el.innerHTML = `<div class="fname"></div><div class="fmeta"></div>`;
+    el.innerHTML = `<div class="ficon"><svg><use href="#i-film"/></svg></div>
+      <div class="fbody"><div class="fname"></div><div class="fmeta"></div></div>
+      ${qualityBadge(f.width, f.height)}`;
     el.querySelector(".fname").textContent = f.name;
-    el.querySelector(".fmeta").textContent =
-      [fmtMB(f.size), f.width && f.height ? `${f.width}x${f.height}` : "", fmtDur(f.duration)].filter(Boolean).join("  ·  ");
+    el.querySelector(".fmeta").innerHTML =
+      [fmtMB(f.size), f.width && f.height ? `${f.width}×${f.height}` : "", fmtDur(f.duration)]
+        .filter(Boolean).map(x => `<span>${x}</span>`).join("") +
+      (f.uploaded ? `<span class="up">↑ uploaded</span>` : "");
     el.onclick = () => selectFile(f);
     box.appendChild(el);
   }
 }
 function selectFile(f) {
+  if (state.engine === "pc") {
+    // PC render directly off the phone file — bytes are streamed when rendering starts
+    state.file = f; // keep phone selection too, for a quick engine switch-back
+    state.pcFile = { name: f.name, size: f.size, path: f.path, fromPhone: true };
+    refreshPcPickRow();
+    onOptionChanged();
+    toast(`“${f.name}” queued for PC render — will be fetched over Wi-Fi`);
+    renderFiles($("search").value);
+    return;
+  }
   state.file = f;
   const s = $("selected");
-  s.style.display = "block";
+  s.style.display = "flex";
   s.querySelector(".fname").textContent = f.name;
-  s.querySelector(".fmeta").textContent = f.path;
+  s.querySelector(".fmeta").innerHTML = [fmtMB(f.size), f.path ? `<span>${f.path}</span>` : ""].join("  ");
   renderFiles($("search").value);
 }
 $("search").addEventListener("input", e => renderFiles(e.target.value));
 
-// ── start / control ──────────────────────────────────────────────────────────
+// ── upload (other devices → phone) ────────────────────────────────────────────
+const drop = $("drop"), fileInput = $("fileInput");
+drop.onclick = () => fileInput.click();
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => {
+  const files = Array.from(e.dataTransfer.files || []);
+  if (files.length) uploadQueue(files);
+});
+fileInput.onchange = (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length) uploadQueue(files);
+  e.target.value = "";
+};
+let uploading = false;
+async function uploadQueue(files) {
+  if (uploading) { toast("An upload is already running"); return; }
+  uploading = true;
+  for (const f of files) {
+    try { await uploadOne(f); }
+    catch (err) { toast(`Upload failed: ${err.message}`, 4200); break; }
+  }
+  uploading = false;
+}
+function uploadOne(file) {
+  return new Promise((resolve, reject) => {
+    $("upbar").classList.add("show");
+    $("upName").textContent = file.name;
+    $("upSpeed").textContent = "connecting…";
+    const t0 = performance.now();
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload", true);
+    xhr.setRequestHeader("X-Filename", encodeURIComponent(file.name));
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+    xhr.upload.onprogress = (ev) => {
+      if (!ev.lengthComputable) return;
+      const pct = Math.round(ev.loaded / ev.total * 100);
+      $("upFill").style.width = pct + "%";
+      $("upPct").textContent = pct + "%";
+      const sec = (performance.now() - t0) / 1000;
+      if (sec > 0.4) $("upSpeed").textContent = `${fmtMB(ev.loaded)} / ${fmtMB(ev.total)} · ${(ev.loaded / 1048576 / sec).toFixed(1)} MB/s`;
+    };
+    xhr.onload = () => {
+      $("upFill").style.width = "100%";
+      try {
+        const j = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300 && j.ok) {
+          const item = { path: j.path, name: j.name, size: j.size, duration: j.duration, width: j.width, height: j.height, uploaded: true };
+          state.files.unshift(item);
+          if (state.engine === "pc") { state.pcFile = { ...item, fromPhone: true }; refreshPcPickRow(); }
+          else selectFile(item);
+          switchTab("phone");
+          toast(`Uploaded “${j.name}” to the phone`);
+          setTimeout(() => $("upbar").classList.remove("show"), 1800);
+          resolve(j);
+        } else reject(new Error(j.error || ("HTTP " + xhr.status)));
+      } catch (err) { reject(err); }
+    };
+    xhr.onerror = () => reject(new Error("network error"));
+    xhr.send(file);
+  });
+}
+
+// ── phone-side conversion control ─────────────────────────────────────────────
 function buildConfig() {
   const curves = {};
   for (const [ch, pts] of Object.entries(state.curves)) {
@@ -517,7 +1100,743 @@ function buildConfig() {
     curves: curves,
   };
 }
+const LIVE = ["PROBING", "RUNNING", "PAUSED", "FINALIZING", "RENDERING"];
+function startPolling() {
+  if (state.polling) return;
+  state.polling = setInterval(refreshStatus, 1000);
+}
+async function refreshStatus() {
+  if (state.engine === "pc") return;
+  try {
+    const s = await api("/api/state");
+    $("statusBox").classList.add("show");
+    setRing(s.progress);
+    $("barFill").style.width = s.progress + "%";
+    $("stPct").textContent = s.progress + "%";
+    setPhase(s.phase);
+    $("stIn").textContent = s.input ? `input: ${s.input}` : "";
+    $("stFps").textContent = s.fps && s.fps !== "0.0" ? s.fps + " fps" : "";
+    $("stEta").textContent = s.etaSec > 0 ? "ETA " + fmtDur(s.etaSec * 1000) : "";
+    $("stSeg").textContent = s.segments > 1 ? `${s.segments} segments` : "";
+    $("stMsg").textContent = s.message || "";
+    $("stOut").textContent = s.output ? "Saved: " + s.output : "";
+    $("btnPause").disabled = s.phase !== "RUNNING";
+    $("btnResume").disabled = s.phase !== "PAUSED";
+    $("btnStop").disabled = !LIVE.includes(s.phase);
+    $("dlRow").classList.toggle("show", !!s.output && (s.phase === "DONE"));
+    if (s.output) window._lastOutput = s.output;
+    if (!LIVE.includes(s.phase) && state.polling) {
+      clearInterval(state.polling);
+      state.polling = null;
+      setTimeout(loadFiles, 1500);
+    }
+    $("devInfo").classList.add("live");
+  } catch (_) { $("devInfo").classList.remove("live"); }
+}
+function setRing(pct) {
+  const C = 2 * Math.PI * 42;
+  $("ringFill").style.strokeDashoffset = C * (1 - Math.min(100, Math.max(0, pct)) / 100);
+}
+function setPhase(p) {
+  $("stPhase").textContent = p;
+  $("stPhase").className = "phase " + p;
+  $("stPhaseChip").textContent = p;
+  $("stPhaseChip").className = "ph phase " + p;
+}
+$("btnDlOut").onclick = () => {
+  if (window._pcResult) {
+    // result of a browser render — download the local WebM
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(window._pcResult);
+    a.download = (state.pcFile ? state.pcFile.name : "sdr2hdr").replace(/\.[^.]+$/, "") + "_HDR.webm";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+    return;
+  }
+  const p = window._lastOutput;
+  if (!p) return;
+  const a = document.createElement("a");
+  a.href = `/api/download?path=${encodeURIComponent(p)}`;
+  a.download = "";
+  document.body.appendChild(a); a.click(); a.remove();
+};
+$("btnPause").onclick = () => api("/api/pause", { method: "POST" }).catch(e => toast(e.message));
+$("btnResume").onclick = () => api("/api/resume", { method: "POST" }).catch(e => toast(e.message));
+$("btnStop").onclick = () => {
+  if (state.engine === "pc") { window._pcAbort = true; return; }
+  api("/api/stop", { method: "POST" }).catch(e => toast(e.message));
+};
+$("stopServerBtn").onclick = async () => {
+  try { await api("/api/stop_server", { method: "POST" }); } catch (_) {}
+  toast("Server stopped — you can close this tab", 5000);
+};
+</script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════════════════
+   PC RENDER ENGINE — this browser's CPU/GPU does the work (WebGL grading +
+   WebCodecs encode + built-in WebM muxer). The phone only serves bytes.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// ── tiny EBML/WebM muxer (streaming clusters, HDR colour signalling) ─────────
+function ebmlCat(arrs) {
+  const n = arrs.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const a of arrs) { out.set(a, o); o += a.length; }
+  return out;
+}
+function ebmlVint(len) {
+  if (len < 0x80) return new Uint8Array([0x80 | len]);
+  if (len < 0x4000) return new Uint8Array([0x40 | (len >> 8), len & 0xFF]);
+  if (len < 0x200000) return new Uint8Array([0x20 | (len >> 16), (len >> 8) & 0xFF, len & 0xFF]);
+  if (len < 0x10000000) return new Uint8Array([0x10 | (len >>> 24), (len >>> 16) & 0xFF, (len >>> 8) & 0xFF, len & 0xFF]);
+  return new Uint8Array([0x08, (len / 2 ** 48) | 0, (len / 2 ** 40) & 0xFF, (len / 2 ** 32) & 0xFF, (len >>> 24) & 0xFF, (len >>> 16) & 0xFF, (len >>> 8) & 0xFF, len & 0xFF]);
+}
+function ebmlUint(v, n) {
+  const a = new Uint8Array(n);
+  let x = v;
+  for (let i = n - 1; i >= 0; i--) { a[i] = x & 0xFF; x = Math.floor(x / 256); }
+  return a;
+}
+function ebmlI16(v) { const u = v & 0xFFFF; return new Uint8Array([(u >> 8) & 0xFF, u & 0xFF]); }
+function ebmlF64(x) { const b = new ArrayBuffer(8); new DataView(b).setFloat64(0, x, false); return new Uint8Array(b); }
+function ebmlEl(id, payload) {
+  const body = Array.isArray(payload) ? ebmlCat(payload) : payload;
+  return ebmlCat([new Uint8Array(id), ebmlVint(body.length), body]);
+}
+function ebmlStr(s) { return new TextEncoder().encode(s); }
+
+class WebMWriter {
+  /**
+   * @param o {width, height, fps, durationSec, hasAudio,
+   *           transfer: 16 (PQ) | 18 (HLG)}
+   */
+  constructor(o) {
+    this.o = o;
+    this.parts = [];
+    this.audio = [];          // buffered encoded opus packets {tsMs, data}
+    this.cluster = null;
+    this.clusterTs = 0;
+    this.bytes = 0;
+
+    this.parts.push(ebmlEl([0x1A, 0x45, 0xDF, 0xA3], [
+      ebmlEl([0x42, 0x86], ebmlUint(1, 1)),
+      ebmlEl([0x42, 0xF7], ebmlUint(1, 1)),
+      ebmlEl([0x42, 0xF2], ebmlUint(4, 1)),
+      ebmlEl([0x42, 0xF3], ebmlUint(8, 1)),
+      ebmlEl([0x42, 0x82], ebmlStr("webm")),
+      ebmlEl([0x42, 0x87], ebmlUint(2, 1)),
+      ebmlEl([0x42, 0x85], ebmlUint(2, 1)),
+    ]));
+    // Segment with "unknown" size (8-byte all-ones)
+    this.parts.push(ebmlCat([new Uint8Array([0x18, 0x53, 0x80, 0x67, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF])]));
+    this.parts.push(ebmlEl([0x15, 0x49, 0xA9, 0x66], [
+      ebmlEl([0x2A, 0xD7, 0xB1], ebmlUint(1000000, 4)),
+      ebmlEl([0x44, 0x89], ebmlF64(Math.max(1, o.durationSec * 1000))),
+      ebmlEl([0x4D, 0x80], ebmlStr("SDR2HDR web muxer")),
+      ebmlEl([0x57, 0x41], ebmlStr("SDR2HDR PC render")),
+    ]));
+
+    const videoTrack = ebmlEl([0xAE], [
+      ebmlEl([0xD7], ebmlUint(1, 1)),
+      ebmlEl([0x73, 0xC5], ebmlUint(1, 4)),
+      ebmlEl([0x83], ebmlUint(1, 1)),
+      ebmlEl([0x86], ebmlStr("V_VP9")),
+      ebmlEl([0x23, 0xE3, 0x83], ebmlUint(Math.round(1e9 / o.fps), 8)),
+      ebmlEl([0xE0], [
+        ebmlEl([0xB0], ebmlUint(o.width, 2)),
+        ebmlEl([0xBA], ebmlUint(o.height, 2)),
+        ebmlEl([0x55, 0xB0], [
+          ebmlEl([0x55, 0xB1], ebmlUint(9, 1)),        // MatrixCoefficients = BT.2020 NCL
+          ebmlEl([0x55, 0xBA], ebmlUint(o.transfer, 1)), // TransferCharacteristics = PQ / HLG
+          ebmlEl([0x55, 0xBB], ebmlUint(9, 1)),        // Primaries = BT.2020
+        ]),
+      ]),
+    ]);
+    let tracks = [videoTrack];
+    if (o.hasAudio) {
+      const opusHead = new Uint8Array([
+        0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64, // "OpusHead"
+        1, 2, 0, 0, // version 1, stereo, preskip 0
+        0x80, 0xBB, 0x00, 0x00, // 48000 LE
+        0, 0, 0, // gain 0, mapping family 0
+      ]);
+      tracks.push(ebmlEl([0xAE], [
+        ebmlEl([0xD7], ebmlUint(2, 1)),
+        ebmlEl([0x73, 0xC5], ebmlUint(2, 4)),
+        ebmlEl([0x83], ebmlUint(2, 1)),
+        ebmlEl([0x86], ebmlStr("A_OPUS")),
+        ebmlEl([0x63, 0xA2], opusHead),
+        ebmlEl([0xE1], [
+          ebmlEl([0x62, 0xB0], ebmlF64(48000)),
+          ebmlEl([0x9F], ebmlUint(2, 1)),
+        ]),
+      ]));
+    }
+    this.parts.push(ebmlEl([0x16, 0x54, 0xAE, 0x6B], tracks));
+  }
+
+  addAudio(tsUs, data) { this.audio.push({ ts: Math.round(tsUs / 1000), data }); }
+
+  addVideo(tsUs, key, data) {
+    const ts = Math.round(tsUs / 1000);
+    // interleave buffered audio packets that sit at/below this video timestamp
+    this._flushAudioTo(ts);
+    this._block(1, ts, key, data);
+  }
+
+  _flushAudioTo(tsMs) {
+    while (this.audio.length && this.audio[0].ts <= tsMs) {
+      const a = this.audio.shift();
+      this._block(2, a.ts, true, a.data);
+    }
+  }
+
+  _block(track, ts, key, data) {
+    if (!this.cluster) { this.cluster = { ts, blocks: [] }; this.clusterTs = ts; }
+    if (ts - this.clusterTs > 5000) { this._closeCluster(); this.cluster = { ts, blocks: [] }; this.clusterTs = ts; }
+    const head = ebmlCat([
+      new Uint8Array([0x80 | track]),            // track number as 1-byte EBML vint
+      ebmlI16(ts - this.clusterTs),
+      new Uint8Array([key ? 0x80 : 0x00]),       // flags: bit 7 = keyframe (matroska spec)
+    ]);
+    this.cluster.blocks.push(ebmlEl([0xA3], ebmlCat([head, data])));
+  }
+
+  _closeCluster() {
+    if (!this.cluster) return;
+    const payload = [ebmlEl([0xE7], ebmlUint(this.cluster.ts, 4)), ...this.cluster.blocks];
+    const el = ebmlEl([0x1F, 0x43, 0xB6, 0x75], payload);
+    this.parts.push(el);
+    this.bytes += el.length;
+    this.cluster = null;
+  }
+
+  finish() {
+    this._flushAudioTo(0x7FFFFFFF); // trailing audio packets after the last video frame
+    this._closeCluster();
+    return new Blob(this.parts, { type: "video/webm" });
+  }
+}
+
+// ── WebGL grading renderer ────────────────────────────────────────────────────
+let gl = null, glProg = null, glVideoTex = null, glLutTex = null, glCanvas = null;
+window._lutData = new Uint8Array(256 * 4);
+
+function evalCurvePts(pts, x) {
+  // pts sorted by x; linear interp over Catmull-Rom samples
+  if (pts.length < 2) return x;
+  if (x <= pts[0][0]) return pts[0][1];
+  if (x >= pts[pts.length - 1][0]) return pts[pts.length - 1][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (x <= pts[i][0]) {
+      const t = (x - pts[i - 1][0]) / Math.max(1e-9, pts[i][0] - pts[i - 1][0]);
+      return pts[i - 1][1] + t * (pts[i][1] - pts[i - 1][1]);
+    }
+  }
+  return pts[pts.length - 1][1];
+}
+function bakeLut() {
+  // master curve applied first, then the per-channel curve (mirrors the app pipeline)
+  const d = window._lutData;
+  for (let i = 0; i < 256; i++) {
+    const x = i / 255;
+    d[i * 4]     = Math.round(255 * Math.min(1, Math.max(0, evalCurvePts(state.curves.r, evalCurvePts(state.curves.master, x)))));
+    d[i * 4 + 1] = Math.round(255 * Math.min(1, Math.max(0, evalCurvePts(state.curves.g, evalCurvePts(state.curves.master, x)))));
+    d[i * 4 + 2] = Math.round(255 * Math.min(1, Math.max(0, evalCurvePts(state.curves.b, evalCurvePts(state.curves.master, x)))));
+    d[i * 4 + 3] = 255;
+  }
+  if (glLutTex && gl) {
+    gl.bindTexture(gl.TEXTURE_2D, glLutTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, d);
+  }
+}
+
+const FRAG = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+out vec4 fragColor;
+uniform sampler2D u_video;
+uniform sampler2D u_lut;
+uniform float u_exposure, u_highlight, u_saturation, u_contrast, u_gamma, u_brightness, u_temp, u_tint, u_sharp;
+uniform int u_tonemap;   // 0 linear 1 reinhard 2 hable 3 mobius
+uniform int u_format;    // 0 PQ 1 HLG
+
+vec3 applyTonemap(vec3 c) {
+  if (u_tonemap == 1) {
+    float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    float Lmax = max(0.05, u_highlight / 100.0);
+    float scale = (1.0 + L / (Lmax * Lmax)) / (1.0 + L);
+    return c * scale;
+  } else if (u_tonemap == 2) {
+    vec3 x = c * 2.0;
+    vec3 a = x * (x * 0.15 + 0.10) + 0.02;
+    vec3 b = x * (x * 0.10 + 0.30) + 0.026;
+    vec3 col = a / b;
+    vec3 w = vec3(11.2);
+    vec3 wa = w * (w * 0.15 + 0.10) + 0.02;
+    vec3 wb = w * (w * 0.10 + 0.30) + 0.026;
+    return col / (wa / wb);
+  } else if (u_tonemap == 3) {
+    const float b = 0.3;
+    vec3 outc;
+    for (int i = 0; i < 3; i++) {
+      float v = c[i];
+      outc[i] = v <= 0.5 ? v : ((((v - 0.5) * (b + v)) / ((v*v + (b-1.0)*v + b))) * (0.5 / (b - 0.25)) + 0.5);
+    }
+    return outc;
+  }
+  return c;
+}
+vec3 pqEncode(vec3 Ln) {          // Ln = nits / 10000
+  const float m1 = 0.1593017578125, m2 = 78.84375;
+  const float c1 = 0.8359375, c2 = 18.8515625, c3 = 18.6875;
+  vec3 y1 = pow(max(Ln, vec3(0.0)), vec3(m1));
+  vec3 y2 = pow(y1, vec3(m2));
+  return (c1 + c2 * y2) * y1 / (1.0 + c3 * y2);
+}
+vec3 hlgEncode(vec3 E) {
+  const float A = 0.17883277, B = 0.28466892, C = 0.55991073;
+  vec3 r;
+  for (int i = 0; i < 3; i++) {
+    float e = clamp(E[i], 0.0, 1.0);
+    r[i] = e <= 0.5 ? sqrt(3.0 * e) : (A * log(12.0 * e - B) + C);
+  }
+  return clamp(r, vec3(0.0), vec3(1.0));
+}
+void main() {
+  vec2 uv = v_uv;
+  vec3 c = texture(u_video, uv).rgb;
+  if (u_sharp > 0.001) {
+    vec2 px = vec2(1.0) / vec2(textureSize(u_video, 0));
+    vec3 blur = (
+      texture(u_video, uv + px * vec2(-1, -1)).rgb + texture(u_video, uv + px * vec2(0, -1)).rgb +
+      texture(u_video, uv + px * vec2(1, -1)).rgb + texture(u_video, uv + px * vec2(-1, 0)).rgb +
+      texture(u_video, uv + px * vec2(1, 0)).rgb + texture(u_video, uv + px * vec2(-1, 1)).rgb +
+      texture(u_video, uv + px * vec2(0, 1)).rgb + texture(u_video, uv + px * vec2(1, 1)).rgb) / 8.0;
+    c = c + (c - blur) * u_sharp;
+  }
+  // gamma decode (approx sRGB) + exposure
+  vec3 lin = pow(clamp(c, 0.0, 1.0), vec3(2.2));
+  lin *= exp2(u_exposure);
+  lin = applyTonemap(lin);
+  // display-space grading
+  vec3 d = pow(clamp(lin, 0.0, 1.0), vec3(1.0 / 2.2));
+  d = pow(d, vec3(1.0 / max(0.1, u_gamma)));
+  d = (d - 0.5) * u_contrast + 0.5;
+  d += vec3(u_brightness);
+  d.r += u_temp; d.b -= u_temp; d.g += u_tint;
+  float lum = dot(d, vec3(0.2126, 0.7152, 0.0722));
+  d = mix(vec3(lum), d, u_saturation);
+  d = clamp(d, 0.0, 1.0);
+  // curves LUT
+  d.r = texture(u_lut, vec2(d.r, 0.5)).r;
+  d.g = texture(u_lut, vec2(d.g, 0.5)).g;
+  d.b = texture(u_lut, vec2(d.b, 0.5)).b;
+  // back to linear, scale to HDR signal, OETF-encode
+  vec3 l2 = pow(clamp(d, 0.0, 1.0), vec3(2.2));
+  vec3 outc;
+  if (u_format == 1) {
+    outc = hlgEncode(l2 * (u_highlight / 1000.0));
+  } else {
+    outc = pqEncode(l2 * (u_highlight / 10000.0));
+  }
+  fragColor = vec4(clamp(outc, 0.0, 1.0), 1.0);
+}`;
+
+const VERT = `#version 300 es
+in vec2 a_pos;
+out vec2 v_uv;
+void main() {
+  v_uv = vec2(a_pos.x * 0.5 + 0.5, 0.5 - a_pos.y * 0.5);
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}`;
+
+function initGl(w, h) {
+  glCanvas = document.createElement("canvas");
+  glCanvas.width = w;
+  glCanvas.height = h;
+  gl = glCanvas.getContext("webgl2", { preserveDrawingBuffer: true, alpha: false });
+  if (!gl) throw new Error("WebGL2 is not available on this device");
+  const compile = (type, src) => {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error("shader: " + gl.getShaderInfoLog(sh));
+    return sh;
+  };
+  glProg = gl.createProgram();
+  gl.attachShader(glProg, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(glProg, compile(gl.FRAGMENT_SHADER, FRAG));
+  gl.linkProgram(glProg);
+  if (!gl.getProgramParameter(glProg, gl.LINK_STATUS)) throw new Error("link: " + gl.getProgramInfoLog(glProg));
+  gl.useProgram(glProg);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(glProg, "a_pos");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  glVideoTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, glVideoTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+  glLutTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, glLutTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  bakeLut();
+
+  gl.uniform1i(gl.getUniformLocation(glProg, "u_video"), 0);
+  gl.uniform1i(gl.getUniformLocation(glProg, "u_lut"), 1);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, glLutTex);
+  gl.viewport(0, 0, w, h);
+}
+function setUniforms(cfg) {
+  const u = (n) => gl.getUniformLocation(glProg, n);
+  gl.uniform1f(u("u_exposure"), cfg.exposure);
+  gl.uniform1f(u("u_highlight"), cfg.highlight);
+  gl.uniform1f(u("u_saturation"), cfg.saturation);
+  gl.uniform1f(u("u_contrast"), cfg.contrast);
+  gl.uniform1f(u("u_gamma"), cfg.gamma);
+  gl.uniform1f(u("u_brightness"), cfg.brightness);
+  const tempShift = (cfg.temperature - 6500) / 6500 * 0.12;
+  gl.uniform1f(u("u_temp"), tempShift);
+  gl.uniform1f(u("u_tint"), cfg.tint);
+  gl.uniform1f(u("u_sharp"), (cfg.sharpness / 100) * 1.4);
+  gl.uniform1i(u("u_tonemap"), { none: 0, reinhard: 1, hable: 2, mobius: 3 }[cfg.tonemap] || 0);
+  gl.uniform1i(u("u_format"), cfg.format === "hlg" ? 1 : 0);
+}
+function drawVideoFrame(videoEl) {
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, glVideoTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoEl);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, glLutTex);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+function once(el, ev, ms) {
+  return new Promise((resolve) => {
+    let done = false;
+    const fn = () => { if (done) return; done = true; el.removeEventListener(ev, fn); resolve(true); };
+    el.addEventListener(ev, fn);
+    if (ms) setTimeout(() => { if (!done) { done = true; el.removeEventListener(ev, fn); resolve(false); } }, ms);
+  });
+}
+function waitDequeue(encoder) {
+  return new Promise((r) => {
+    const check = () => { if (encoder.encodeQueueSize <= 4) r(); else setTimeout(check, 12); };
+    check();
+  });
+}
+function targetDims(srcW, srcH, resKey) {
+  const targets = { "720p": [1280, 720], "1080p": [1920, 1080], "2k": [2560, 1440], "4k": [3840, 2160], "8k": [7680, 4320] };
+  if (!targets[resKey]) return [srcW - (srcW % 2), srcH - (srcH % 2)];
+  const [tw, th] = targets[resKey];
+  const scale = Math.min(tw / srcW, th / srcH);
+  return [Math.round(srcW * scale / 2) * 2, Math.round(srcH * scale / 2) * 2];
+}
+async function fetchPhoneFile(path, onProgress) {
+  const res = await fetch(`/api/download?path=${encodeURIComponent(path)}&inline=1`);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const total = +(res.headers.get("Content-Length") || 0);
+  if (!res.body || !total) return await res.blob();
+  const reader = res.body.getReader();
+  const chunks = [];
+  let got = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    got += value.length;
+    if (onProgress) onProgress(got, total);
+  }
+  return new Blob(chunks, { type: "video/mp4" });
+}
+async function estimateFps(video) {
+  if (!video.requestVideoFrameCallback) return 30;
+  return new Promise((resolve) => {
+    const times = [];
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      video.pause();
+      const ds = [];
+      for (let i = 1; i < times.length; i++) {
+        const d = times[i] - times[i - 1];
+        if (d > 0.001 && d < 0.2) ds.push(d);
+      }
+      if (ds.length < 3) return resolve(30);
+      ds.sort((a, b) => a - b);
+      const med = ds[ds.length >> 1];
+      const fps = 1 / med;
+      const std = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60];
+      let best = 30, bd = 1e9;
+      for (const s of std) { const d = Math.abs(s - fps); if (d < bd) { bd = d; best = s; } }
+      resolve(Math.abs(best / fps - 1) < 0.12 ? best : Math.min(60, Math.max(24, Math.round(fps))));
+    };
+    const cb = (now, meta) => {
+      times.push(meta.mediaTime);
+      if (times.length >= 14 || times[times.length - 1] > 1.0) finish();
+      else video.requestVideoFrameCallback(cb);
+    };
+    video.requestVideoFrameCallback(cb);
+    video.play().catch(() => finish());
+    setTimeout(finish, 2600);
+  });
+}
+
+// ── the render pipeline ───────────────────────────────────────────────────────
+window._pcAbort = false;
+async function runPcRender() {
+  if (state.busy) return;
+  if (!state.pcFile) { toast("Pick a video for the PC engine first"); return; }
+  state.busy = true;
+  window._pcAbort = false;
+  $("statusBox").classList.add("show");
+  setPhase("RUNNING");
+  $("stMsg").textContent = "Preparing…";
+  $("stIn").textContent = `input: ${state.pcFile.name}`;
+  $("stOut").textContent = "";
+  $("btnPause").disabled = true;
+  $("btnResume").disabled = true;
+  $("btnStop").disabled = false;
+  $("dlRow").classList.remove("show");
+
+  const cfg = buildConfig();
+  let blob = state.pcFile.file;
+  try {
+    if (!blob && state.pcFile.fromPhone) {
+      $("stMsg").textContent = "Fetching video from phone over Wi-Fi…";
+      const t0 = performance.now();
+      blob = await fetchPhoneFile(state.pcFile.path, (got, total) => {
+        setRing(got / total * 100);
+        $("stPct").textContent = Math.round(got / total * 100) + "%";
+        const sec = (performance.now() - t0) / 1000;
+        $("stMsg").textContent = `Fetching… ${fmtMB(got)} / ${fmtMB(total)} · ${(got / 1048576 / sec).toFixed(1)} MB/s`;
+      });
+    }
+    if (!blob) throw new Error("No usable source file");
+    await renderPcBlob(blob, cfg);
+  } catch (err) {
+    if (window._pcAbort) {
+      setPhase("CANCELLED");
+      $("stMsg").textContent = "Render stopped by user.";
+    } else {
+      setPhase("FAILED");
+      $("stMsg").textContent = String(err && err.message || err);
+      toast("PC render failed — the phone engine still works for this video", 5200);
+    }
+  } finally {
+    state.busy = false;
+  }
+}
+
+async function renderPcBlob(blob, cfg) {
+  const url = URL.createObjectURL(blob);
+  const video = document.createElement("video");
+  video.src = url;
+  video.muted = true;
+  video.preload = "auto";
+  await once(video, "loadedmetadata", 12000);
+  if (!video.videoWidth) throw new Error("This browser cannot decode that video");
+
+  const [w, h] = targetDims(video.videoWidth, video.videoHeight, cfg.resolution);
+  const duration = video.duration || 0;
+  $("stMsg").textContent = "Detecting frame rate…";
+  const fps = await estimateFps(video);
+  video.pause();
+
+  // audio track → opus packets (runs entirely on this PC)
+  let audioPackets = null;
+  try {
+    const ac = new OfflineAudioContext(2, Math.max(1, Math.ceil(duration * 48000)), 48000);
+    const src = ac.createBufferSource();
+    src.buffer = await ac.decodeAudioData(await blob.arrayBuffer());
+    src.connect(ac.destination);
+    src.start();
+    const rendered = await ac.startRendering();
+    audioPackets = await encodeOpus(rendered);
+  } catch (_) { /* no audio track, or unsupported codec — video only */ }
+
+  const codecStrings = {
+    vp9: "vp09.00.10.08",
+    av1: "av01.0.08M.08",
+    hevc: "hvc1.2.4.L153.B00",
+  };
+  const mpix = (w * h) / (1920 * 1080);
+  const bitrate = Math.round(Math.min(36e6, Math.max(1.5e6, mpix * 8e6)));
+  const color = { primaries: "bt2020", transfer: cfg.format === "hlg" ? "arib-std-b67" : "smpte2084", matrix: "bt2020nc" };
+
+  let encoderCfg = null;
+  for (const key of [cfg.codec, "vp9"]) {
+    const cs = codecStrings[key];
+    if (!cs) continue;
+    for (const hw of ["prefer-hardware", "no-preference"]) {
+      const tryCfg = {
+        codec: cs, width: w, height: h, framerate: fps, bitrate,
+        latencyMode: "quality", hardwareAcceleration: hw, color,
+      };
+      try {
+        const s = await VideoEncoder.isConfigSupported(tryCfg);
+        if (s && s.supported) { encoderCfg = tryCfg; break; }
+      } catch (_) {}
+    }
+    if (encoderCfg) break;
+  }
+  if (!encoderCfg) throw new Error("No usable hardware/software video encoder for " + w + "×" + h);
+
+  const muxer = new WebMWriter({
+    width: w, height: h, fps, durationSec: duration,
+    hasAudio: !!audioPackets,
+    transfer: cfg.format === "hlg" ? 18 : 16,
+  });
+  for (const p of audioPackets || []) muxer.addAudio(p.ts, p.data);
+
+  let encodeError = null;
+  let lastFrameTs = 0;
+  const videoEncoder = new VideoEncoder({
+    output: (chunk) => {
+      const data = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(data);
+      muxer.addVideo(chunk.timestamp, chunk.type === "key", data);
+      lastFrameTs = chunk.timestamp;
+    },
+    error: (e) => { encodeError = e; },
+  });
+  videoEncoder.configure(encoderCfg);
+
+  initGl(w, h);
+  setUniforms(cfg);
+
+  const frameDur = 1 / fps;
+  const totalFrames = Math.max(1, Math.ceil(duration / frameDur));
+  const keyInterval = Math.max(1, Math.round(fps * 2));
+  const t0 = performance.now();
+  let frames = 0;
+
+  for (let i = 0; i < totalFrames; i++) {
+    if (window._pcAbort) { try { videoEncoder.close(); } catch (_) {} throw new Error("aborted"); }
+    if (encodeError) throw encodeError;
+    const t = Math.min(duration - 0.001, i * frameDur);
+    if (Math.abs(video.currentTime - t) > 1e-4) {
+      video.currentTime = t;
+      const ok = await once(video, "seeked", 3000);
+      if (!ok) continue;
+    }
+    drawVideoFrame(video);
+    const vf = new VideoFrame(glCanvas, { timestamp: Math.round(t * 1e6), duration: Math.round(frameDur * 1e6) });
+    videoEncoder.encode(vf, { keyFrame: i % keyInterval === 0 });
+    vf.close();
+    frames++;
+    if (videoEncoder.encodeQueueSize > 6) await waitDequeue(videoEncoder);
+
+    if (i % 5 === 0) {
+      const pct = Math.round(i / totalFrames * 100);
+      setRing(pct);
+      $("stPct").textContent = pct + "%";
+      $("barFill").style.width = pct + "%";
+      const elapsed = (performance.now() - t0) / 1000;
+      const rps = frames / Math.max(0.1, elapsed);
+      $("stFps").textContent = rps.toFixed(1) + " fps";
+      const remain = (totalFrames - i) / Math.max(0.5, rps);
+      $("stEta").textContent = isFinite(remain) ? "ETA " + fmtDur(remain * 1000) : "";
+      $("stMsg").textContent =
+        `Rendering on this PC · ${w}×${h} @ ${fps}fps · ${encoderCfg.hardwareAcceleration === "prefer-hardware" ? "HW encoder" : "SW encoder"} · frame ${i + 1}/${totalFrames}`;
+    }
+    if (videoEncoder.encodeQueueSize > 2) await waitDequeue(videoEncoder);
+  }
+
+  $("stMsg").textContent = "Finalising WebM…";
+  setPhase("FINALIZING");
+  await videoEncoder.flush();
+  videoEncoder.close();
+  const outBlob = muxer.finish();
+  URL.revokeObjectURL(url);
+
+  if (encodeError) throw encodeError;
+  setPhase("DONE");
+  setRing(100);
+  $("stPct").textContent = "100%";
+  $("barFill").style.width = "100%";
+  $("stOut").textContent = `${outBlob.size ? fmtMB(outBlob.size) : ""} ${w}×${h} HDR WebM · rendered locally on this PC`;
+  $("stMsg").textContent = `Done — ${frames} frames in ${((performance.now() - t0) / 1000).toFixed(1)}s${audioPackets ? " · opus audio" : " · no audio"}`;
+  $("btnStop").disabled = true;
+  window._pcResult = outBlob;
+
+  // download + send-to-phone actions
+  $("dlRow").classList.add("show");
+  let sendBtn = $("btnSendPhone");
+  if (!sendBtn) {
+    sendBtn = document.createElement("button");
+    sendBtn.className = "pill-btn";
+    sendBtn.id = "btnSendPhone";
+    sendBtn.innerHTML = `<svg style="width:13px;height:13px;vertical-align:-2px;margin-right:6px"><use href="#i-upload"/></svg>Send to phone`;
+    sendBtn.onclick = async () => {
+      if (!window._pcResult) return;
+      try {
+        const name = state.pcFile.name.replace(/\.[^.]+$/, "") + (cfg.format === "hlg" ? "_HLG" : "_HDR") + ".webm";
+        await uploadOne(new File([window._pcResult], name, { type: "video/webm" }));
+        toast("Result uploaded to the phone");
+      } catch (e) { toast("Send failed: " + e.message, 4000); }
+    };
+    $("dlRow").appendChild(sendBtn);
+  }
+}
+
+async function encodeOpus(buffer) {
+  const packets = [];
+  let encError = null;
+  const enc = new AudioEncoder({
+    output: (chunk) => {
+      const data = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(data);
+      packets.push({ ts: chunk.timestamp, data });
+    },
+    error: (e) => { encError = e; },
+  });
+  enc.configure({ codec: "opus", sampleRate: 48000, numberOfChannels: 2, bitrate: 128000 });
+  const N = 960;
+  const ch0 = buffer.getChannelData(0);
+  const ch1 = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : ch0;
+  for (let off = 0; off + N <= ch0.length; off += N) {
+    if (encError) throw encError;
+    const planar = new Float32Array(N * 2);
+    planar.set(ch0.subarray(off, off + N), 0);
+    planar.set(ch1.subarray(off, off + N), N);
+    const ad = new AudioData({
+      format: "f32-planar", sampleRate: 48000, numberOfFrames: N,
+      numberOfChannels: 2, timestamp: Math.round(off / 48000 * 1e6), data: planar,
+    });
+    enc.encode(ad);
+    ad.close();
+    if (enc.encodeQueueSize > 40) await waitDequeue(enc);
+  }
+  await enc.flush();
+  enc.close();
+  if (encError) throw encError;
+  return packets;
+}
+
+// ── start button dispatch ─────────────────────────────────────────────────────
 $("startBtn").onclick = async () => {
+  if (state.busy) return;
+  if (state.engine === "pc") {
+    runPcRender();
+    return;
+  }
   if (!state.file) { toast("Pick a video first"); return; }
   try {
     await api("/api/start", {
@@ -525,59 +1844,44 @@ $("startBtn").onclick = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: state.file.path, config: buildConfig() }),
     });
-    toast("Conversion started");
-    $("statusBox").style.display = "block";
+    toast("Conversion started on the phone");
+    $("statusBox").classList.add("show");
+    $("dlRow").classList.remove("show");
+    window._pcResult = null;
     startPolling();
   } catch (e) { toast(e.message); }
 };
-$("btnPause").onclick = () => api("/api/pause", { method: "POST" }).catch(e => toast(e.message));
-$("btnResume").onclick = () => api("/api/resume", { method: "POST" }).catch(e => toast(e.message));
-$("btnStop").onclick = () => api("/api/stop", { method: "POST" }).catch(e => toast(e.message));
-$("stopServerBtn").onclick = async () => {
-  try { await api("/api/stop_server", { method: "POST" }); } catch (_) {}
-  toast("Server stopped — you can close this tab");
-};
 
-// ── status polling ───────────────────────────────────────────────────────────
-const LIVE = ["PROBING", "RUNNING", "PAUSED", "FINALIZING"];
-function startPolling() {
-  if (state.polling) return;
-  state.polling = setInterval(refreshStatus, 1000);
-}
-async function refreshStatus() {
-  try {
-    const s = await api("/api/state");
-    $("statusBox").style.display = "block";
-    $("barFill").style.width = s.progress + "%";
-    $("stPhase").textContent = s.phase;
-    $("stPhase").className = "phase " + s.phase;
-    $("stPct").textContent = s.progress + "%";
-    $("stFps").textContent = s.fps && s.fps !== "0.0" ? s.fps + " fps" : "";
-    $("stEta").textContent = s.etaSec > 0 ? "ETA " + fmtDur(s.etaSec * 1000) : "";
-    $("stMsg").textContent = s.message || "";
-    $("stOut").textContent = s.output ? "Saved: " + s.output : "";
-    $("btnPause").disabled = s.phase !== "RUNNING";
-    $("btnResume").disabled = s.phase !== "PAUSED";
-    $("btnStop").disabled = !LIVE.includes(s.phase);
-    if (!LIVE.includes(s.phase) && state.polling) {
-      clearInterval(state.polling);
-      state.polling = null;
-      setTimeout(loadFiles, 1500);
-    }
-  } catch (_) { /* server stopped */ }
-}
-
-// ── boot ─────────────────────────────────────────────────────────────────────
+// ── boot ──────────────────────────────────────────────────────────────────────
 (async function boot() {
   let caps = null;
   try {
     const info = await api("/api/info");
-    $("devInfo").textContent = `${info.device} · SDR2HDR ${info.version} · ${info.serverUrl || ""}`;
+    state.info = info;
+    $("devInfo").classList.add("live");
+    $("devInfo").innerHTML = `<span class="dot"></span>${info.device} · SDR2HDR ${info.version}`;
+    $("stDevice").textContent = info.device;
+    $("stVersion").textContent = "v" + info.version;
+    $("stServer").textContent = info.serverUrl || location.host;
+    if (info.uploadDir) $("upDirHint").textContent = info.uploadDir;
     caps = info.caps;
-  } catch (_) {}
+  } catch (_) {
+    $("stServer").textContent = location.host;
+  }
+  buildChips();
   applyCaps(caps || { av1: true, hevcHw: true, h264Hw: true, vp9: true, mediacodec: true, vulkan: true, dolbyVision: true, hdr10plus: true });
+  onOptionChanged();
+  if (!PC_OK) {
+    $("engPc").classList.add("off");
+    $("engPcDesc").textContent = "Needs a Chromium desktop browser (Chrome / Edge) with WebCodecs. This browser can still fully control the phone.";
+  } else if (IS_MOBILE) {
+    $("engPc").classList.add("off");
+    $("engPcDesc").textContent = "Open this page on a desktop browser to render with the PC's CPU/GPU instead.";
+  } else {
+    $("engPcStat").textContent = "WebCodecs ready";
+  }
   await loadFiles();
-  refreshStatus().then(() => { if (LIVE.includes(($("stPhase").textContent || ""))) startPolling(); });
+  refreshStatus().then(() => { if (LIVE.includes($("stPhase").textContent)) startPolling(); });
 })();
 </script>
 </body>
