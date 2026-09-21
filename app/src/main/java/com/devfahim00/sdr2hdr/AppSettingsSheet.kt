@@ -60,12 +60,12 @@ class AppSettingsSheet(
             if (WebServerService.isRunning) {
                 WebServerService.stop(activity)
                 // the service stops asynchronously; reflect it immediately
-                postDelayed({ refreshServerRow() }, 400)
+                postDelayed(400) { refreshServerRow() }
             } else {
                 WebServerService.start(activity)
                 // the port is chosen on the background accept thread; poll briefly
-                postDelayed({ refreshServerRow() }, 600)
-                postDelayed({ refreshServerRow() }, 1600)
+                postDelayed(600) { refreshServerRow() }
+                postDelayed(1600) { refreshServerRow() }
             }
         }
         binding.rowServer.setOnLongClickListener {
@@ -187,7 +187,7 @@ class AppSettingsSheet(
     }
 
     private fun postDelayed(delayMs: Long, action: () -> Unit) {
-        binding.rowServer.postDelayed(action, delayMs)
+        binding.rowServer.postDelayed(Runnable(action), delayMs)
     }
 
     override fun dismiss() {

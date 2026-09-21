@@ -22,6 +22,9 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // GitHub-release APKs are sideloaded: sign with the debug key so the
+            // artifact installs without a dedicated keystore/secret setup.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

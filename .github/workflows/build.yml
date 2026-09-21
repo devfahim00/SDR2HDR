@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Build Debug APK
+    name: Build Release APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,13 +18,18 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Build debug APK
+      - name: Build release APK (debug-key signed, installable)
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleRelease --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p artifact
+          cp app/build/outputs/apk/release/app-release.apk artifact/SDR2HDR-v0.0.1.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SDR2HDR-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: SDR2HDR-release-apk
+          path: artifact/SDR2HDR-v0.0.1.apk

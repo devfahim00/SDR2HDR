@@ -53,6 +53,8 @@ same defaults, same output behavior.
   - **Check for Updates** (manual, bypasses the 6 h auto-check limit) and **About**
 - **Curves editor fix** — dragging curve points no longer scrolls the settings page
   (parent touch-interception disabled during drags, bigger canvas, larger grab radius)
+- **New modern launcher icon** — adaptive icon with a duotone violet-blue HDR sun, play
+  glyph, gradient background and an Android 13+ themed (monochrome) variant
 - App version reset to **0.0.1** (versionCode 3) to match the GitHub release tag
 
 ## v1.1 features
@@ -92,13 +94,14 @@ format=yuv420p10le
 
 ## Building
 
-GitHub Actions builds a debug APK on every push (`.github/workflows/build.yml`).
-Download it from the run's **Artifacts** (`SDR2HDR-debug-apk`) or from **Releases**.
+GitHub Actions builds an **installable release APK** (debug-key signed for sideloading) on
+every push (`.github/workflows/build.yml`). Download it from the run's **Artifacts**
+(`SDR2HDR-release-apk`) or from **Releases**.
 
 Locally:
 
 ```
-./gradlew assembleDebug
+./gradlew assembleRelease
 ```
 
 Requires JDK 17 and the Android SDK (compileSdk 34).
