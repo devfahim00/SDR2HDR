@@ -195,6 +195,10 @@ class ConvertService : Service() {
         segments.clear()
         resumeOffsetSec = 0.0
         framesBase = 0
+        lastStatsSec = 0.0
+        lastStatsFrame = 0L
+        sessionId = -1L
+        hdr10PlusJson = null
         inputName = File(inputPath).name
 
         val fmtLabel = when {
@@ -391,28 +395,43 @@ class ConvertService : Service() {
 
     private fun handlePause(segFile: File) {
         releaseWake()
-        val pausedAt = resumeOffsetSec + lastStatsSec
-        resumeOffsetSec = pausedAt
+        val statsPauseAt = resumeOffsetSec + lastStatsSec
         framesBase += lastStatsFrame
 
         executor.execute {
             // A cancel can leave the final fragment truncated — copy the partial segment
             // through ffmpeg again (fragmented output) to guarantee a clean file.
+            // ffmpeg may exit non-zero on the corrupt tail but still have written every
+            // parseable packet, so validity is judged by the file, not the exit code.
             val sanitized = File(segFile.parentFile, segFile.nameWithoutExtension + "_s.mp4")
-            val ok = runSync(
-                FfmpegEngine.buildSanitizeCommand(segFile.absolutePath, sanitized.absolutePath)
-            )
-            if (ok && sanitized.isFile && sanitized.length() > 2048) {
+            runSync(FfmpegEngine.buildSanitizeCommand(segFile.absolutePath, sanitized.absolutePath))
+            fun readable(f: File): Boolean =
+                f.isFile && f.length() > 2048 &&
+                    (VideoUtils.probeVideo(f.absolutePath)?.durationSec ?: 0.0) > 0.1
+
+            var kept: File? = null
+            if (readable(sanitized)) {
                 segFile.delete()
                 segments.add(sanitized)
+                kept = sanitized
             } else {
                 sanitized.delete()
-                if (segFile.isFile && segFile.length() > 2048) {
+                if (readable(segFile)) {
                     segments.add(segFile)
+                    kept = segFile
                 } else {
                     segFile.delete()
                 }
             }
+            // Resume exactly where the *kept* file actually ends — robust even if the
+            // cancelled tail was truncated (the stats time may over-report what landed
+            // on disk). A 1-2 frame overlap is imperceptible, a gap would not be.
+            var pausePoint = statsPauseAt
+            kept?.let { k ->
+                val keptDur = VideoUtils.probeVideo(k.absolutePath)?.durationSec ?: 0.0
+                if (keptDur > 0.1) pausePoint = resumeOffsetSec + keptDur
+            }
+            resumeOffsetSec = pausePoint
             if (stopRequested) {
                 cancelled()
                 return@execute
@@ -420,7 +439,7 @@ class ConvertService : Service() {
             setState {
                 it.copy(
                     phase = Phase.PAUSED,
-                    message = "Paused at ${formatTime(pausedAt)} — resume anytime",
+                    message = "Paused at ${formatTime(pausePoint)} — resume anytime",
                     segments = segments.size
                 )
             }

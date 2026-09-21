@@ -164,7 +164,7 @@ object FfmpegEngine {
         // Segmented (fragmented) output keeps a cancelled partial file readable, which is
         // what makes pause / resume possible; the final file is remuxed with +faststart.
         sb.append(" -movflags ").append(SEGMENT_MOVFLAGS)
-            .append(" -frag_duration 2000000 \"").append(segmentPath).append("\"")
+            .append(" -frag_duration 1000000 \"").append(segmentPath).append("\"")
         return sb.toString()
     }
 
