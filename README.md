@@ -23,6 +23,9 @@ same defaults, same output behavior.
 - Metadata cleaning: preserve (default) or strip
 - HDR10 static metadata: `master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)`,
   `max-cll` set from the Highlight nits value
+- **AI Upscale** (optional, SDR sources only): on-device Real-ESRGAN (`realesr-animevideov3`,
+  ncnn + Vulkan, CPU fallback) at 2x/3x/4x, run as a pre-stage before the HDR conversion;
+  pause/resume/stop and progress all work the same as the main encode
 - Already-HDR inputs (smpte2084 / arib-std-b67) are detected and skipped, like the script
 - Live progress: %, frames, fps and ETA, with a Stop button; screen kept on + partial wake lock
   while encoding
@@ -155,3 +158,8 @@ FFmpeg (`full-gpl` build with libx265) is bundled via the maintained
 [ffmpeg-kit](https://github.com/sk3llo/ffmpeg-kit-flutter) fork
 (`com.antonkarpenko:ffmpeg-kit-full-gpl`), FFmpeg v8.1.1. The full-gpl variant makes this
 project GPL — source is published in this repository.
+
+The AI upscaler uses [ncnn](https://github.com/Tencent/ncnn) (BSD-3, downloaded at build time
+by the `fetchNcnn` Gradle task, not committed) and the `realesr-animevideov3` models from
+[Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) (BSD-3, license bundled in
+`app/src/main/assets/models/`).

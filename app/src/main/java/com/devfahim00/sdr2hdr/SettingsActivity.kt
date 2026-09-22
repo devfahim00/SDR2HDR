@@ -151,6 +151,7 @@ class SettingsActivity : AppCompatActivity() {
         // Output format / dynamic metadata / codec / gpu / threads / tone-map chips
         binding.groupFormat.setOnCheckedStateChangeListener { _, _ -> updateHints(); updateStartLabel() }
         binding.groupResolution.setOnCheckedStateChangeListener { _, _ -> updateHints() }
+        binding.groupAiUpscale.setOnCheckedStateChangeListener { _, _ -> updateHints() }
         binding.groupDyn.setOnCheckedStateChangeListener { _, _ -> updateHints() }
         binding.groupCodec.setOnCheckedStateChangeListener { _, _ -> updateDynGating(); updateHints() }
         binding.groupGpu.setOnCheckedStateChangeListener { _, _ -> updateHints() }
@@ -190,6 +191,8 @@ class SettingsActivity : AppCompatActivity() {
             binding.curvesView.resetAll()
             binding.groupFormat.check(R.id.fmt_pq)
             binding.groupResolution.check(R.id.res_source)
+            binding.groupAiUpscale.check(R.id.ai_off)
+            binding.switchAiGpu.isChecked = true
             binding.groupDyn.check(R.id.dyn_none)
             binding.groupCodec.check(R.id.codec_hevc)
             binding.groupGpu.check(R.id.gpu_off)
@@ -285,6 +288,12 @@ class SettingsActivity : AppCompatActivity() {
             R.id.tm_mobius -> ToneMapOp.MOBIUS
             else -> ToneMapOp.NONE
         }
+        val aiUpscale = when (binding.groupAiUpscale.checkedChipId) {
+            R.id.ai_2x -> 2
+            R.id.ai_3x -> 3
+            R.id.ai_4x -> 4
+            else -> 0
+        }
         return ConvertConfig(
             exposure = exposure(),
             highlight = highlight(),
@@ -306,6 +315,8 @@ class SettingsActivity : AppCompatActivity() {
             allowHdrInput = binding.switchHdrInput.isChecked,
             resolution = resolution,
             sharpness = sharpness(),
+            aiUpscale = aiUpscale,
+            aiGpu = binding.switchAiGpu.isChecked,
             curves = curvesMap
         )
     }
@@ -313,6 +324,11 @@ class SettingsActivity : AppCompatActivity() {
     // ── capability gating ───────────────────────────────────────────────────────
 
     private fun applyCapabilityGating() {
+        val aiOk = AiUpscaler.isSupported
+        listOf(binding.ai2x, binding.ai3x, binding.ai4x).forEach { it.isEnabled = aiOk }
+        if (!aiOk && binding.groupAiUpscale.checkedChipId != R.id.ai_off) {
+            binding.groupAiUpscale.check(R.id.ai_off)
+        }
         binding.codecAv1.isEnabled = Capability.av1Encoder != null
         binding.codecHevchw.isEnabled = Capability.hevcHwEncoder
         binding.codecH264hw.isEnabled = Capability.h264HwEncoder
@@ -390,6 +406,20 @@ class SettingsActivity : AppCompatActivity() {
             R.id.res_4k -> "Upscale to 3840x2160 (4K UHD) · lanczos · aspect preserved"
             R.id.res_8k -> "Upscale to 7680x4320 (8K) · very slow, huge files"
             else -> "Keep the source resolution (default)"
+        }
+
+        binding.switchAiGpu.visibility =
+            if (binding.groupAiUpscale.checkedChipId != R.id.ai_off) View.VISIBLE else View.GONE
+        binding.textAiHint.text = when {
+            !AiUpscaler.isSupported -> "Not available: this build/device does not support the AI engine"
+            binding.groupAiUpscale.checkedChipId == R.id.ai_off ->
+                "On-device AI super-resolution before HDR conversion (slow; SDR sources only)"
+            else -> {
+                val f = when (binding.groupAiUpscale.checkedChipId) {
+                    R.id.ai_2x -> 2; R.id.ai_3x -> 3; else -> 4
+                }
+                "Real-ESRGAN · ${f}x before HDR conversion · HDR sources are skipped · adds a lot of time"
+            }
         }
 
         binding.textCodecHint.text = when (binding.groupCodec.checkedChipId) {

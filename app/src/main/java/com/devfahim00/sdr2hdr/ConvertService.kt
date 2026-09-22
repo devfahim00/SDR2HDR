@@ -70,6 +70,9 @@ class ConvertService : Service() {
         const val EXTRA_INPUT = "input"
         const val EXTRA_CONFIG = "config"
 
+        /** Share of the progress bar taken by the AI upscale stage (it dominates the run time). */
+        private const val AI_SHARE = 85
+
         private const val CHANNEL_ID = "conversion"
         private const val NOTIF_ID = 41
         private const val DONE_NOTIF_ID = 42
@@ -119,6 +122,11 @@ class ConvertService : Service() {
     private var framesBase = 0L
     private var lastStatsSec = 0.0
     private var lastStatsFrame = 0L
+
+    // AI upscale pre-stage (null when not running) and the progress window of the current stage
+    @Volatile private var aiPipeline: AiUpscalePipeline? = null
+    private var progressBase = 0
+    private var progressSpan = 100
 
     private var sessionId = -1L
     private var pauseRequested = false
@@ -199,6 +207,9 @@ class ConvertService : Service() {
         lastStatsFrame = 0L
         sessionId = -1L
         hdr10PlusJson = null
+        aiPipeline = null
+        progressBase = 0
+        progressSpan = 100
         inputName = File(inputPath).name
 
         val fmtLabel = when {
@@ -242,8 +253,88 @@ class ConvertService : Service() {
             return
         }
 
+        if (config.aiUpscale > 0) {
+            if (m.isHdr) {
+                setState { it.copy(message = "AI upscale skipped: HDR source.") }
+            } else {
+                runAiStage(m)
+                return
+            }
+        }
+        proceed(m, SourceColor.from(m))
+    }
+
+    /**
+     * Stage 1 (optional): AI upscale the source into an SDR intermediate, then hand that file
+     * to the normal HDR conversion (stage 2). Runs on the service executor thread.
+     */
+    private fun runAiStage(m: VideoMeta) {
+        val wd = File(cacheDir, "convert_${System.currentTimeMillis()}").also { it.mkdirs() }
+        workDir = wd
+        val src = SourceColor.from(m)
+
+        setState {
+            it.copy(
+                phase = Phase.RUNNING,
+                durationSec = m.durationSec ?: 0.0,
+                sourceInfo = "${src.matrix}  ·  ${if (src.fullRange) "full" else "limited"} range",
+                progress = 0,
+                message = "Preparing AI upscale ${config.aiUpscale}x..."
+            )
+        }
+
+        val pipeline = AiUpscalePipeline(
+            applicationContext, inputPath, m, src, config.aiUpscale, config.aiGpu, wd,
+            object : AiUpscalePipeline.Listener {
+                override fun onStatus(message: String) {
+                    setState { it.copy(message = message) }
+                }
+
+                override fun onProgress(done: Long, total: Long, fps: Double, etaSec: Double) {
+                    val pct = if (total > 0) (done * 100 / total).toInt().coerceIn(0, 99) else 0
+                    setState {
+                        it.copy(
+                            progress = pct * AI_SHARE / 100,
+                            frames = done,
+                            totalFrames = total,
+                            fps = fps,
+                            etaSec = etaSec,
+                            processedSec = if (m.fps != null && m.fps > 0) done / m.fps else 0.0,
+                            message = "AI upscale ${config.aiUpscale}x · frame $done / $total"
+                        )
+                    }
+                }
+            }
+        )
+        aiPipeline = pipeline
+        val result = pipeline.run()
+        aiPipeline = null
+        if (!active) return
+
+        when (result) {
+            is AiUpscalePipeline.Result.Success -> {
+                val up = VideoUtils.probeVideo(result.file.absolutePath)
+                if (up == null) {
+                    fail("Could not read the upscaled intermediate video.")
+                    return
+                }
+                inputPath = result.file.absolutePath
+                progressBase = AI_SHARE
+                progressSpan = 100 - AI_SHARE
+                setState { it.copy(frames = 0, fps = 0.0, etaSec = -1.0) }
+                // The intermediate keeps the source colorimetry but is always limited range.
+                proceed(up, src.copy(fullRange = false))
+            }
+            is AiUpscalePipeline.Result.Cancelled -> cancelled()
+            is AiUpscalePipeline.Result.Failed -> fail(result.message, result.log)
+        }
+    }
+
+    /** Stage 2: HDR conversion of [m] (the original or the AI-upscaled intermediate). */
+    private fun proceed(m: VideoMeta, srcColor: SourceColor) {
+        if (!active) return
         meta = m
-        source = SourceColor.from(m)
+        source = srcColor
         durationSec = m.durationSec ?: 0.0
         totalFrames = when (config.platform) {
             "tiktok" -> (durationSec * 60).toLong()
@@ -273,8 +364,10 @@ class ConvertService : Service() {
         }
         finalFile = out
 
-        workDir = File(cacheDir, "convert_${System.currentTimeMillis()}")
-        workDir?.mkdirs()
+        if (workDir == null) {
+            workDir = File(cacheDir, "convert_${System.currentTimeMillis()}")
+            workDir?.mkdirs()
+        }
 
         if (config.dynamicMeta == DynamicMeta.HDR10PLUS) {
             hdr10PlusJson = File(workDir, "hdr10plus.json")
@@ -325,6 +418,7 @@ class ConvertService : Service() {
         var pct = if (durationSec > 0) (total / durationSec * 100).toInt() else 0
         if (pct < 0) pct = 0
         if (pct > 99) pct = 99
+        pct = progressBase + pct * progressSpan / 100
         val frames = framesBase + lastStatsFrame
         val fps = st.videoFps.toDouble()
         val remaining = (durationSec - total).coerceAtLeast(0.0)
@@ -497,6 +591,13 @@ class ConvertService : Service() {
     private fun requestPause() {
         if (!active) return
         if (state.value.phase != Phase.RUNNING) return
+        aiPipeline?.let { ai ->
+            ai.pause()
+            releaseWake()
+            setState { it.copy(phase = Phase.PAUSED, message = "Paused — AI upscale ${config.aiUpscale}x") }
+            pushNotification()
+            return
+        }
         synchronized(lock) { pauseRequested = true }
         if (sessionId >= 0) {
             try {
@@ -509,6 +610,12 @@ class ConvertService : Service() {
     private fun requestResume() {
         if (!active) return
         if (state.value.phase != Phase.PAUSED) return
+        aiPipeline?.let { ai ->
+            acquireWake()
+            setState { it.copy(phase = Phase.RUNNING, message = "AI upscale ${config.aiUpscale}x...") }
+            ai.resume()
+            return
+        }
         synchronized(lock) { stopRequested = false }
         setState { it.copy(phase = Phase.RUNNING, message = "Encoding ${it.formatLabel} BT.2020 frames...") }
         startNextSegment()
@@ -517,6 +624,11 @@ class ConvertService : Service() {
     private fun requestStop() {
         if (!active) return
         synchronized(lock) { stopRequested = true }
+        // AI stage: the pipeline unwinds and runAiStage() then reports the cancellation.
+        aiPipeline?.let { ai ->
+            ai.cancel()
+            return
+        }
         val phase = state.value.phase
         when (phase) {
             Phase.PAUSED -> cancelled()
@@ -606,7 +718,7 @@ class ConvertService : Service() {
         try {
             val pm = getSystemService(PowerManager::class.java)
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sdr2hdr:convert")
-                .also { it.acquire(3 * 60 * 60 * 1000L) }
+                .also { it.acquire((if (config.aiUpscale > 0) 12L else 3L) * 60 * 60 * 1000L) }
         } catch (_: Exception) {
         }
     }
@@ -667,7 +779,10 @@ class ConvertService : Service() {
                     .addAction(0, "Stop", actionPi(ACTION_STOP, 3))
             }
             Phase.RUNNING -> {
-                builder.setContentText("${s.progress}% · ${s.formatLabel} · %.1fx".format(Locale.US, s.fps / 30.0))
+                builder.setContentText(
+                    if (aiPipeline != null) "${s.progress}% · AI upscale ${config.aiUpscale}x"
+                    else "${s.progress}% · ${s.formatLabel} · %.1fx".format(Locale.US, s.fps / 30.0)
+                )
                     .setProgress(100, s.progress, false)
                     .addAction(0, "Pause", actionPi(ACTION_PAUSE, 1))
                     .addAction(0, "Stop", actionPi(ACTION_STOP, 3))

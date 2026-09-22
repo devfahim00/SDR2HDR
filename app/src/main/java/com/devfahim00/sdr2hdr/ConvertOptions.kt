@@ -101,6 +101,10 @@ data class ConvertConfig(
     val resolution: OutputResolution = OutputResolution.SOURCE,
     /** 0 = off; 1..100 maps to an unsharp luma amount of 0.00..1.50 */
     val sharpness: Int = 0,
+    /** On-device AI upscale factor applied before the HDR conversion: 0 = off, else 2, 3 or 4. */
+    val aiUpscale: Int = 0,
+    /** Run the AI upscaler on the Vulkan GPU when available (else CPU). */
+    val aiGpu: Boolean = true,
     /** channel key ("master","r","g","b") -> normalised control points (x,y in 0..1) */
     val curves: Map<String, List<Pair<Double, Double>>> = emptyMap()
 ) {
@@ -133,6 +137,8 @@ data class ConvertConfig(
         o.put("allowHdrInput", allowHdrInput)
         o.put("resolution", resolution.key)
         o.put("sharpness", sharpness)
+        o.put("aiUpscale", aiUpscale)
+        o.put("aiGpu", aiGpu)
         if (curves.isNotEmpty()) {
             val c = JSONObject()
             for ((k, pts) in curves) {
@@ -189,6 +195,8 @@ data class ConvertConfig(
                     allowHdrInput = o.optBoolean("allowHdrInput", false),
                     resolution = OutputResolution.fromKey(o.optString("resolution")),
                     sharpness = o.optInt("sharpness", 0).coerceIn(0, 100),
+                    aiUpscale = o.optInt("aiUpscale", 0).let { if (it == 2 || it == 3 || it == 4) it else 0 },
+                    aiGpu = o.optBoolean("aiGpu", true),
                     curves = curves
                 )
             } catch (_: Exception) {
