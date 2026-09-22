@@ -57,7 +57,10 @@ bool create_net_locked(bool want_gpu) {
     if (gpu) {
         net->set_vulkan_device(ncnn::get_default_gpu_index());
     } else {
-        net->opt.num_threads = std::max(1, ncnn::get_big_cpu_count());
+        // All cores, not just the "big" cluster: this runs a handful of times per second at
+        // most (once per video frame), so the little cores' extra throughput is worth more
+        // than avoiding their lower per-core clock.
+        net->opt.num_threads = std::max(1, ncnn::get_cpu_count());
     }
 
     const std::string param = g_base + ".param";
@@ -162,6 +165,16 @@ Java_com_devfahim00_sdr2hdr_AiUpscaler_nativeUpscale(JNIEnv* env, jclass, jobjec
 JNIEXPORT void JNICALL
 Java_com_devfahim00_sdr2hdr_AiUpscaler_nativeSetCancel(JNIEnv*, jclass, jboolean cancel) {
     g_cancel.store(cancel == JNI_TRUE);
+}
+
+// Lets the caller start with a bigger (or smaller) tile once the real frame size is known —
+// e.g. the whole frame in one tile needs no padding and no extra ncnn::Extractor calls at all.
+// nativeUpscale still halves this on GPU-memory failure and falls back to CPU as before, so
+// callers can safely pass a generous starting value.
+JNIEXPORT void JNICALL
+Java_com_devfahim00_sdr2hdr_AiUpscaler_nativeSetTile(JNIEnv*, jclass, jint tile) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_tile = std::max(kMinTile, (int)tile);
 }
 
 JNIEXPORT jboolean JNICALL

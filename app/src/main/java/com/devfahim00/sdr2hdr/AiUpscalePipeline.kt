@@ -195,6 +195,7 @@ class AiUpscalePipeline(
                             )
                         }
                         outBmp = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888)
+                        AiUpscaler.setTile(inBmp.width, inBmp.height)
                         listener.onStatus("$label · ${inBmp.width}x${inBmp.height} → ${outW}x$outH · $device")
                         startMs = SystemClock.elapsedRealtime()
                         pausedMs = 0L

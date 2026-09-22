@@ -13,9 +13,13 @@ object AiUpscaler {
     /** Scale factors we ship a model for. */
     val SCALES = intArrayOf(2, 3, 4)
 
-    /** Tile edge (input pixels) handed to the network. */
+    /** Tile edge (input pixels) used until [setTile] picks a size for the actual frame dimensions. */
     private const val TILE_GPU = 256
     private const val TILE_CPU = 128
+
+    /** Largest tile edge we start with — bigger frames still begin at this size, then tile. */
+    private const val MAX_START_TILE_GPU = 960
+    private const val MAX_START_TILE_CPU = 480
 
     /** False when the native library cannot be loaded (e.g. 32-bit only device). */
     val isSupported: Boolean by lazy {
@@ -46,6 +50,19 @@ object AiUpscaler {
         }
     }
 
+    /**
+     * Called once the real frame size is known (before the first [upscale] call). Starts as
+     * close to "whole frame, one tile" as is safe: no padding overhead and a single ncnn
+     * inference call per frame, instead of the small fixed tile used before this was known.
+     * [upscale] still shrinks the tile automatically (and falls back to CPU) if it doesn't fit.
+     */
+    fun setTile(frameWidth: Int, frameHeight: Int) {
+        if (!isSupported) return
+        val cap = if (usingGpu()) MAX_START_TILE_GPU else MAX_START_TILE_CPU
+        val tile = maxOf(frameWidth, frameHeight).coerceAtMost(cap)
+        nativeSetTile(tile)
+    }
+
     /** Both bitmaps must be ARGB_8888; [output] exactly scale x larger. 0 = ok, -2 = cancelled. */
     fun upscale(input: Bitmap, output: Bitmap): Int = nativeUpscale(input, output)
 
@@ -70,6 +87,7 @@ object AiUpscaler {
     ): Int
 
     @JvmStatic external fun nativeUpscale(input: Bitmap, output: Bitmap): Int
+    @JvmStatic external fun nativeSetTile(tile: Int)
     @JvmStatic external fun nativeSetCancel(cancel: Boolean)
     @JvmStatic external fun nativeUsingGpu(): Boolean
     @JvmStatic external fun nativeDevice(): String
